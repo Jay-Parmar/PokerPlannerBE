@@ -67,3 +67,11 @@ class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
         "Does the user have permissions to view the app `app_label`?"
         # Simplest possible answer: Yes, always
         return True
+
+    def save(self, *args, **kwargs):
+        """
+        Checks if user exists in database if not hashes user password and saves it.
+        """
+        if not self.id:
+            self.set_password(self.password)
+        return super(User, self).save(*args, **kwargs)
