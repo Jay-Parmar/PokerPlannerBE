@@ -17,7 +17,10 @@ class CommonInfo(models.Model):
 
 
 class UserManager(BaseUserManager):
-    def create(self, email, password,**kwargs):
+    def create_user(self, email, password,**kwargs):
+        """
+        Creates and saves a user with the given email and password.
+        """
         if not email:
             raise ValueError('Users must have an email address')
 
@@ -25,9 +28,8 @@ class UserManager(BaseUserManager):
             email=self.normalize_email(email),
             **kwargs
         )
-        print("createUser")
         user.set_password(password)
-        user.save(using=self._db)
+        user.save()
         return user
 
 
@@ -39,7 +41,10 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
-    email = models.EmailField(max_length=255,unique=True)
+    """
+    Class containing user model fields.
+    """
+    email = models.EmailField(max_length=255, unique=True)
     first_name = models.CharField(max_length=50, null=False)
     last_name = models.CharField(max_length=50, null=True)
     is_admin = models.BooleanField(default=False)
