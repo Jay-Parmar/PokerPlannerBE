@@ -1,7 +1,9 @@
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from apps.user.models import CommonInfo
 from apps.group.models import Group
+
 
 class Pokerboard(CommonInfo):
     """
@@ -18,30 +20,34 @@ class Pokerboard(CommonInfo):
         (FIBONACCI, "Fibonacci"),
     )
 
-    manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, help_text='Creator of Pokerboard')
-    estimate_type = models.PositiveSmallIntegerField(
-        choices=ESTIMATION_CHOICES, help_text='Estimation type', default=SERIES
+    manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING, help_text='Creator of Pokerboard'
     )
-    title = models.CharField(unique=True, max_length=20, help_text='Name of Pokerboard')
-    description = models.CharField(max_length=100, help_text='Description')
-    timer = models.PositiveIntegerField(help_text='Duration for voting (in seconds)')
-    range_start = models.PositiveIntegerField(help_text="Estimation card range beginning", default=1)
-    range_end = models.PositiveIntegerField(help_text="Estimation card range ending", default=10)
+    estimate_type = models.PositiveSmallIntegerField(
+        choices=ESTIMATION_CHOICES, help_text='Estimation type', default=SERIES, null=False
+    )
+    title = models.CharField(unique=True, max_length=20, help_text='Name of Pokerboard', null=False)
+    description = models.CharField(max_length=100, help_text='Description', null=True)
+    timer = models.PositiveIntegerField(help_text='Duration for voting (in seconds)', null=False)
+    estimation_cards = ArrayField(
+        models.PositiveIntegerField(), help_text="Array of estimation values choosed by user", default=[]
+    )
 
     def __str__(self):
         return self.title
 
 
-class Invites(models.Model):
+class Invites(CommonInfo):
     """
     Invites gone to user or group via pokerboard.
     """
+    email = models.EmailField(help_text="Non existing user email", null=True)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, help_text="Person invited", related_name="invite", on_delete=models.CASCADE, null=True
+        settings.AUTH_USER_MODEL, help_text="Person invited", related_name="invites", on_delete=models.DO_NOTHING, null=True
     )
-    group = models.ForeignKey(Group, help_text="Group Invited", on_delete=models.CASCADE, null=True)
+    group = models.ForeignKey(Group, help_text="Group Invited", on_delete=models.DO_NOTHING, null=True)
     pokerboard = models.ForeignKey(
-        Pokerboard, help_text="Pokerboard", related_name="invites", on_delete=models.CASCADE
+        Pokerboard, help_text="Pokerboard", related_name="invites", on_delete=models.DO_NOTHING
     )
     is_accepted = models.BooleanField(default=False, help_text="Indicates if invitation accepted or not")
 
@@ -49,9 +55,9 @@ class Invites(models.Model):
         return f'Pokerboard: {self.pokerboard} - Group: {self.group} - User: {self.user}'
 
 
-class Ticket(models.Model):
+class Ticket(CommonInfo):
     """
-    Ticket details class
+    Ticket details class.
     """
     UNTOUCHED = 1
     ONGOING = 2
@@ -65,11 +71,11 @@ class Ticket(models.Model):
     )
 
     pokerboard = models.ForeignKey(
-        Pokerboard, related_name="tickets", on_delete=models.CASCADE, help_text="Pokerboard to which ticket belongs"
+        Pokerboard, related_name="tickets", on_delete=models.DO_NOTHING, help_text="Pokerboard to which ticket belongs"
     )
     ticket_id = models.SlugField(help_text="Ticket ID imported from JIRA")
     estimate = models.PositiveIntegerField(null=True, help_text="Final estimate of ticket")
-    order = models.PositiveIntegerField(help_text="Order of display of tickets")
+    order = models.PositiveIntegerField(help_text="Order of displaying of tickets")
     status = models.PositiveSmallIntegerField(help_text="Status of ticket", choices=STATUS_CHOICES, default=UNTOUCHED)
     start_datetime = models.DateTimeField(null=True)
     end_datetime = models.DateTimeField(null=True)
@@ -79,6 +85,9 @@ class Ticket(models.Model):
 
 
 class UserTicketEstimate(models.Model):
+    """
+    Estimation of ticket by each user.
+    """
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, help_text="Person estimated", 
         related_name="estimations", on_delete=models.DO_NOTHING, null=False
@@ -95,7 +104,10 @@ class UserTicketEstimate(models.Model):
         return f'User {self.user} - Estimated {self.estimate}'
 
 
-class PokerboardUser(models.Model):
+class PokerboardUser(CommonInfo):
+    """
+    Through table of pokerboard with user.
+    """
     SPECTATOR = 1
     CONTRIBUTOR = 2
     ROLE = (
@@ -103,23 +115,32 @@ class PokerboardUser(models.Model):
         (CONTRIBUTOR, "Contributor"),
     )
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, help_text="Users Associated", related_name="pokerboards", on_delete=models.CASCADE, null=False
+        settings.AUTH_USER_MODEL, help_text="Users Associated", related_name="pokerboards", on_delete=models.DO_NOTHING, null=False
     )
     pokerboard = models.ForeignKey(
-        Pokerboard, help_text="Pokerboards Associated", on_delete=models.CASCADE
+        Pokerboard, help_text="Pokerboards Associated", on_delete=models.DO_NOTHING
     )
     role = models.PositiveSmallIntegerField(choices=ROLE, help_text="Role", default=CONTRIBUTOR)
 
+    def __str__(self):
+        return f'User: {self.user} Role: {self.role} Board: {self.pokerboard}'
 
-class PokerboardGroup(models.Model):
+
+class PokerboardGroup(CommonInfo):
+    """
+    Through table of pokerboard with group.
+    """
     SPECTATOR = 1
     CONTRIBUTOR = 2
     ROLE = (
         (SPECTATOR, "Spectator"),
         (CONTRIBUTOR, "Contributor"),
     )
-    group = models.ForeignKey(Group, help_text="Groups Associated", on_delete=models.CASCADE, null=False)
+    group = models.ForeignKey(Group, help_text="Groups Associated", on_delete=models.DO_NOTHING, null=False)
     pokerboard = models.ForeignKey(
-        Pokerboard, help_text="Pokerboards Associated", on_delete=models.CASCADE
+        Pokerboard, help_text="Pokerboards Associated", on_delete=models.DO_NOTHING
     )
     role = models.PositiveSmallIntegerField(choices=ROLE, help_text="Role", default=CONTRIBUTOR)
+
+    def __str__(self):
+        return f'Group: {self.group} Role: {self.role} Board: {self.pokerboard}'
