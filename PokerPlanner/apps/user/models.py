@@ -8,7 +8,6 @@ class CommonInfo(models.Model):
     """
     Class containing common fields in all models.
     """
-    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     isDeleted = models.BooleanField(default=False)
@@ -44,12 +43,12 @@ class User(AbstractBaseUser, PermissionsMixin, CommonInfo):
     """
     Class containing user model fields.
     """
-    email = models.EmailField(max_length=255, unique=True)
-    first_name = models.CharField(max_length=50, null=False)
-    last_name = models.CharField(max_length=50, null=True)
-    is_admin = models.BooleanField(default=False)
-    is_staff = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
+    email = models.EmailField(max_length=255, unique=True, help_text='Email Address')
+    first_name = models.CharField(max_length=50, null=False, help_text='First Name of User')
+    last_name = models.CharField(max_length=50, null=True, help_text='Last Name of User')
+    is_admin = models.BooleanField(default=False, help_text='This user has all permissions without explicitly assigning them')
+    is_staff = models.BooleanField(default=False, help_text='This user can access admin panel')
+    is_active = models.BooleanField(default=True)
 
     objects = UserManager()
 
