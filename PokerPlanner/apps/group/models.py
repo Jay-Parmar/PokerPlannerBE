@@ -1,9 +1,11 @@
 from django.db import models
 from django.conf import settings
-from apps.user.models import CommonInfo
+
+from utils import models as util_models
+from utils import managers as util_managers
 
 
-class Group(CommonInfo):
+class Group(util_models.CommonInfo, util_models.SoftDeletionModel):
     """
     Group model to store group details.
     """
