@@ -23,7 +23,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token = Token.objects.create(user=user)
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({**serializer.data, "token": token.key}, status=status.HTTP_200_OK)
 
 
@@ -46,7 +46,7 @@ class Login(APIView):
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
-            'user_id': user.pk,
+            'id': user.pk,
             'email': user.email,
             'first_name' : user.first_name,
             'last_name' : user.last_name
