@@ -45,7 +45,7 @@ class User(AbstractBaseUser, PermissionsMixin, util_models.CommonInfo, util_mode
     )
     is_staff = models.BooleanField(default=False, help_text='This user can access admin panel')
     is_superuser = models.BooleanField(default=False)
-
+    is_verified = models.BooleanField(default=False)
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
