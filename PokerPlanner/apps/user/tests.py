@@ -10,10 +10,12 @@ class UserTests(APITestCase):
 
     def setUp(self):
         self.user = {
-            "first_name": "setup",
-            "last_name": "user",
-            "email": "setupuser@gmail.com",
-            "password": "setupuser@gmail.com",
+            "user": {
+                "first_name": "setup",
+                "last_name": "user",
+                "email": "setupuser@gmail.com",
+                "password": "setupuser@gmail.com",
+            }
         }
         self.response = self.client.post(reverse('user-list'), self.user, format='json')
 
@@ -22,14 +24,16 @@ class UserTests(APITestCase):
         Ensure we can create a new user object.
         """
         data = {
-            "email": "somename@gmail.com",
-            "first_name": "some",
-            "last_name": "name",
-            "password": "somename@gmail.com",
+            "user": {
+                "email": "somename@gmail.com",
+                "first_name": "some",
+                "last_name": "name",
+                "password": "somename@gmail.com",
+            }
         }
         response = self.client.post(reverse('user-list'), data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user = user_models.User.objects.filter(email=data["email"]).first()
+        user = user_models.User.objects.filter(email=data["user"]["email"]).first()
         self.assertIsNotNone(user)
         self.assertEqual(user_models.User.objects.count(), 2)
         expected_data = {
@@ -46,10 +50,12 @@ class UserTests(APITestCase):
         Ensure we cannot create a new user object whose email is already present.
         """
         data = {
-            "email": "setupuser@gmail.com",
-            "first_name": "some",
-            "last_name": "name",
-            "password": "somename@gmail.com",
+            "user": {
+                "email": "setupuser@gmail.com",
+                "first_name": "some",
+                "last_name": "name",
+                "password": "somename@gmail.com",
+            }
         }
         response = self.client.post(reverse('user-list'), data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -65,9 +71,11 @@ class UserTests(APITestCase):
         Ensure the User model won't be created for bad data.
         """
         bad_data = {
-            "email": "somename@gmail.com",
-            "last_name": "name",
-            "password": "somename@gmail.com",
+            "user": {
+                            "email": "somename@gmail.com",
+                "last_name": "name",
+                "password": "somename@gmail.com",
+            }
         }
         expected_data = {
             "first_name": [
@@ -83,9 +91,11 @@ class UserTests(APITestCase):
         Ensure the User model won't be created for bad data.
         """
         bad_data = {
-            "first_name": "some",
-            "last_name": "name",
-            "password": "somename@gmail.com",
+            "user": {
+                "first_name": "some",
+                "last_name": "name",
+                "password": "somename@gmail.com",
+            }
         }
         expected_data = {
             "email": [
@@ -101,17 +111,19 @@ class UserTests(APITestCase):
         Ensure the user isn't created with invalid email.
         """
         bad_data = {
-            "first_name": "some",
-            "email": "email",
-            "last_name": "name",
-            "password": "somename@gmail.com",
+            "user": {
+                "first_name": "some",
+                "email": "email",
+                "last_name": "name",
+                "password": "somename@gmail.com",
+            }
         }
         expected_data = {
             "email": [
                 "Enter a valid email address."
             ]
         }
-        response = self.client.post(reverse('user-list'), data=bad_data)
+        response = self.client.post(reverse('user-list'), data=bad_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(expected_data, response.data)
 
@@ -120,16 +132,18 @@ class UserTests(APITestCase):
         Ensure user won't be created without password.
         """
         bad_data = {
-            "first_name": "some",
-            "last_name": "user",
-            "email": "someuser@gmail.com",
+            "user": {
+                "first_name": "some",
+                "last_name": "user",
+                "email": "someuser@gmail.com",
+            }
         }
         expected_data = {
             "password": [
                 "This field is required."
             ]
         }
-        response = self.client.post(reverse('user-list'), data=bad_data)
+        response = self.client.post(reverse('user-list'), data=bad_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(expected_data, response.data)
 
@@ -143,11 +157,13 @@ class UserTests(APITestCase):
         expected_data = {
             "id": self.response.data["id"],
             "first_name": data["first_name"],
-            "last_name": self.user["last_name"],
-            "email": self.user["email"],
+            "last_name": self.user["user"]["last_name"],
+            "email": self.user["user"]["email"],
         }
+        print("expected ::: ",expected_data)
         url = reverse('user-detail', args=[self.response.data["id"]])
-        response = self.client.patch(url, data=data)
+        response = self.client.patch(url, data=data, format="json")
+        print("respo ::: ",response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(expected_data, response.data)
 
@@ -156,10 +172,12 @@ class UserTests(APITestCase):
         Ensures user can log in using correct creds.
         """
         login_credentials = {
-            "email": self.user["email"],
-            "password": self.user["password"],
+            "user": {
+                "email": self.user["user"]["email"],
+                "password": self.user["user"]["password"],
+            }  
         }
-        user = user_models.User.objects.filter(email=self.user["email"]).first()
+        user = user_models.User.objects.filter(email=self.user["user"]["email"]).first()
         login_response = self.client.post(reverse('login'), login_credentials, format="json")
         expected_data = {
             "id": user.id,
@@ -176,8 +194,10 @@ class UserTests(APITestCase):
         Ensures user cannot log in using invalid creds.
         """
         login_credentials = {
-            "email": self.user["email"],
-            "password": "differentpassword",
+            "user": {
+                "email": self.user["user"]["email"],
+                "password": "differentpassword",
+            }
         }
         login_response = self.client.post(reverse('login'), login_credentials, format="json")
         expected_data = {
@@ -193,8 +213,10 @@ class UserTests(APITestCase):
         Ensures user cannot log in using invalid creds.
         """
         login_credentials = {
-            "email": "invalidemail@gmail.com",
-            "password": self.user["password"],
+            "user": {
+                "email": "invalidemail@gmail.com",
+                "password": self.user["user"]["password"],
+            }
         }
         login_response = self.client.post(reverse('login'), login_credentials, format="json")
         expected_data = {
@@ -210,8 +232,10 @@ class UserTests(APITestCase):
         Ensures user cannot log in using invalid creds.
         """
         login_credentials = {
-            "email": "invalidemail@gmail.com",
-            "password": self.user["password"],
+            "user": {
+                "email": "invalidemail@gmail.com",
+                "password": self.user["user"]["password"],
+            }
         }
         login_response = self.client.post(reverse('login'), login_credentials, format="json")
         expected_data = {
@@ -291,13 +315,15 @@ class UserTests(APITestCase):
         }
         self.client.delete(reverse('user-detail', args=[id]))
         new_data = {
-            "email": previous_email,
-            "first_name": "newName",
-            "last_name": "newLastname",
-            "password": "password"
+            "user": {
+                "email": previous_email,
+                "first_name": "newName",
+                "last_name": "newLastname",
+                "password": "password"
+            }
         }
         response = self.client.post(reverse('user-list'), new_data, format="json")
-        user = user_models.User.objects.filter(email=new_data["email"]).first()
+        user = user_models.User.objects.filter(email=new_data["user"]["email"]).first()
         expected_data = {
             "id": user.id,
             "email": user.email,
