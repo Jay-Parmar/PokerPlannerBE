@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+
 from PokerPlanner.celery import app
 
 
@@ -17,6 +18,8 @@ def send_email_task(first_name, pk, token, email):
     })
     subject = "Verify Email"
     try:
-        send_mail(subject=subject, message=message, from_email=settings.EMAIL_HOST_USER, recipient_list=[email], fail_silently=False)
+        send_mail(subject=subject, message=message, from_email=settings.EMAIL_HOST_USER, 
+        recipient_list=[email], fail_silently=False)
     except:
         print("Error Occured")
+        

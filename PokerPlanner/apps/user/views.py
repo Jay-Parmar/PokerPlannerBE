@@ -1,12 +1,13 @@
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from rest_framework import permissions, status
-from rest_framework import viewsets
+
+from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
+
 from apps.user import (
     serializers as user_serializers,
     models as user_models

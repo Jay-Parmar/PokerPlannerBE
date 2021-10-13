@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.forms import ValidationError
+
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
@@ -55,17 +56,16 @@ class VerifyAccountSerializer(serializers.Serializer):
 
     def validate_token(self, value):
         """
-        Checking if the token is valid for account activation
+        Checks if the token is valid
         """
-        print(value)
         account_activation_token = PasswordResetTokenGenerator()
         if account_activation_token.check_token(self.instance, value):
-            return self.instance
+            return value
         raise serializers.ValidationError("Email Not Valid")
 
     def update(self, user, validated_data):
         """
-        Activating user's account
+        Activates user's account
         """
         user.is_verified = True
         user.save()
