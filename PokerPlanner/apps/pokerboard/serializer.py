@@ -16,14 +16,16 @@ class TicketsSerializer(serializers.ListSerializer):
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
     manager_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all())
-    sprint_id = serializers.CharField(required=False)
-    tickets = TicketsSerializer(required=False)
+    sprint_id = serializers.CharField(required=False, write_only=True)
+    tickets = TicketsSerializer(required=False, write_only=True)
+    jql = serializers.CharField(required=False, write_only=True)
     ticket_responses = serializers.SerializerMethodField()
 
     class Meta:
         model = Pokerboard
         fields = [
-            'manager_id', 'title', 'description', 'tickets', 'sprint_id', 'ticket_responses'
+            'manager_id', 'title', 'description', 'tickets', 'sprint_id',
+            'ticket_responses', 'jql'
         ]
 
     def get_ticket_responses(self, instance):
@@ -31,22 +33,11 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         data = dict(instance)
         ticket_responses = []
         i = 0
+        myJql = ""
+
         # If sprint, then fetch all tickets in sprint and add
         if 'sprint_id' in data:
-            sprint_id = data['sprint_id']
-            while True:
-                issues = []
-                try:
-                    issues = jira.get_sprint_issues(
-                        sprint_id, i*50, 50)['issues']
-                    data['tickets'] = []
-                    for issue in issues:
-                        data['tickets'].append(issue['key'])
-                except requests.exceptions.RequestException as e:
-                    return []
-                i += 1
-                if len(issues) < 50:
-                    break
+            myJql = "Sprint = " + data['sprint_id']
 
         # Adding tickets
         if 'tickets' in data.keys():
@@ -54,24 +45,36 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             serializer = TicketsSerializer(data=tickets)
             serializer.is_valid(raise_exception=True)
 
+            if(len(myJql) != 0):
+                myJql += " OR "
+            myJql += "issueKey in ("
             for ticket in tickets:
-                ticket_response = {}
-                try:
-                    # Check if ticket is already part of another pokerboard
-                    obj = Ticket.objects.filter(ticket_id=ticket)
-                    if obj.exists():
-                        raise Exception('Ticket part of another pokerboard.')
-                    # Checking with JIRA
-                    jira_response = jira.issue(key=ticket)['fields']
-                    ticket_response["summary"] = jira_response["summary"]
-                    ticket_response['estimate'] = jira_response['customfield_10016']
-                    ticket_response['status_code'] = status.HTTP_200_OK
-                except Exception as e:
-                    ticket_response['message'] = str(e)
-                    ticket_response['status_code'] = status.HTTP_404_NOT_FOUND
+                myJql = myJql + ticket + ','
+            myJql = myJql[:-1] + ')'
 
-                ticket_response['key'] = ticket
+        # Adding jql
+        if 'jql' in data.keys():
+            if(len(myJql) != 0):
+                myJql += " OR "
+            myJql += data['jql']
+
+        jql = myJql
+        try:
+            issues = jira.jql(jql)['issues']
+            for issue in issues:
+                ticket_response = {}
+                key = issue['key']
+                obj = Ticket.objects.filter(ticket_id=key)
+                if obj.exists():
+                    ticket_response['message'] = 'Ticket part of another pokerboard.'
+                    ticket_response['status_code'] = status.HTTP_400_BAD_REQUEST
+                else:
+                    ticket_response['estimate'] = issue['fields']['customfield_10016']
+                    ticket_response['status_code'] = status.HTTP_200_OK
+                ticket_response['key'] = key
                 ticket_responses.append(ticket_response)
+        except requests.exceptions.RequestException as e:
+            raise serializers.ValidationError("Invalid Query")
         return ticket_responses
 
     def create(self, validated_data):

@@ -10,5 +10,5 @@ urlpatterns = [
     path('',UserViewSet.as_view()),
     path('login/', Login.as_view(), name="login"),
     path('logout/', Logout.as_view(), name="logout"),
-    path('changepassword/<int:pk>/', ChangePasswordView.as_view())
+    path('changepassword/', ChangePasswordView.as_view())
 ] 
