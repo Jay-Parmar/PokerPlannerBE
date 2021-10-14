@@ -1,9 +1,12 @@
-from rest_framework import permissions, status
+from rest_framework import generics, permissions, request, status
 from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+
+from django.contrib.auth.hashers import check_password, make_password
 
 from apps.user import (
     serializers as user_serializers,
@@ -11,7 +14,7 @@ from apps.user import (
 )
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView):
     """
     A viewset for viewing and editing user instances.
     """
@@ -25,6 +28,16 @@ class UserViewSet(viewsets.ModelViewSet):
         user = serializer.save()
         token = Token.objects.create(user=user)
         return Response({**serializer.data, "token": token.key}, status=status.HTTP_200_OK)
+    
+    def get_object(self):
+        return self.request.user
+    
+
+class ChangePasswordView(generics.UpdateAPIView):
+
+    queryset = user_models.User.objects.all()
+    permission_classes = (IsAuthenticated,)
+    serializer_class = user_serializers.ChangePasswordSerializer
 
 
 class Login(APIView):
