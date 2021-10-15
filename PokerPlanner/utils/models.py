@@ -33,3 +33,7 @@ class SoftDeletionModel(models.Model):
 
     def hard_delete(self):
         super(SoftDeletionModel, self).delete()
+
+    def restore(self):
+        self.deleted_at = None
+        self.save()

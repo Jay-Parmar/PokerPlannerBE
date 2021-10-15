@@ -1,18 +1,21 @@
-from rest_framework import generics, permissions, request, status
-from rest_framework import viewsets
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
+from rest_framework import generics, permissions, request, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
+from rest_framework.generics import UpdateAPIView
+from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
-from django.contrib.auth.hashers import check_password, make_password
 
 from apps.user import (
     serializers as user_serializers,
     models as user_models
 )
-
+from .tasks import send_email_task
 
 class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView):
     """
@@ -23,10 +26,12 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
 
     def create(self, request, *args, **kwargs):
         '''Create a new User.'''
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data["user"])
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token = Token.objects.create(user=user)
+        verification_token = PasswordResetTokenGenerator().make_token(user)
+        send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
         return Response({**serializer.data, "token": token.key}, status=status.HTTP_200_OK)
     
     def get_object(self):
@@ -50,7 +55,7 @@ class Login(APIView):
     
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(
-            data=request.data, context={'request': request}
+            data=request.data["user"], context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         if 'user' not in serializer.validated_data:
@@ -59,7 +64,7 @@ class Login(APIView):
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
-            'user_id': user.pk,
+            'id': user.pk,
             'email': user.email,
             'first_name' : user.first_name,
             'last_name' : user.last_name
@@ -79,3 +84,8 @@ class Logout(ObtainAuthToken):
         except Exception:
             pass
         return Response({"success": ("Successfully logged out.")}, status=status.HTTP_200_OK)
+
+class ActivateAccountView(UpdateAPIView):
+    serializer_class = user_serializers.VerifyAccountSerializer
+    queryset = user_models.User.objects.all()
+    permission_classes = [AllowAny]
