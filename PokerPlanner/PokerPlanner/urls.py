@@ -20,4 +20,5 @@ from django.urls.conf import include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('apps.user.urls')),
+    path('groups/', include('apps.group.urls'))
 ]
