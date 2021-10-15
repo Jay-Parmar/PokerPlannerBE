@@ -13,6 +13,9 @@ class SoftDeletionQuerySet(QuerySet):
     def hard_delete(self):
         return super(SoftDeletionQuerySet, self).delete()
 
+    def restore(self):
+        return super(SoftDeletionQuerySet, self).update(deleted_at=None)
+
 
 class SoftDeletionManager(models.Manager):
     """
@@ -29,3 +32,6 @@ class SoftDeletionManager(models.Manager):
 
     def hard_delete(self):
         return self.get_queryset().hard_delete()
+
+    def restore(self):
+        return self.get_queryset().restore()

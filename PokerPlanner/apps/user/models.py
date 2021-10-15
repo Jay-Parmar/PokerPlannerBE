@@ -23,6 +23,13 @@ class UserManager(BaseUserManager, util_managers.SoftDeletionManager):
             **kwargs
         )
         user.set_password(password)
+
+        try:
+            previous_user = User.all_objects.get(email=email)
+            previous_user.hard_delete()
+        except User.DoesNotExist:
+            pass
+            
         user.save()
         return user
 

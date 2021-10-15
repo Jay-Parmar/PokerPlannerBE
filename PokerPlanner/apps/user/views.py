@@ -23,7 +23,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         '''Create a new User.'''
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data["user"])
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token = Token.objects.create(user=user)
@@ -42,7 +42,7 @@ class Login(APIView):
     
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(
-            data=request.data, context={'request': request}
+            data=request.data["user"], context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         if 'user' not in serializer.validated_data:
@@ -51,7 +51,7 @@ class Login(APIView):
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
-            'user_id': user.pk,
+            'id': user.pk,
             'email': user.email,
             'first_name' : user.first_name,
             'last_name' : user.last_name
