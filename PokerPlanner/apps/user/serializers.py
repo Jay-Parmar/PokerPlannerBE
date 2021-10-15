@@ -1,5 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.forms import ValidationError
 
 from rest_framework import serializers, status
 from rest_framework.authtoken.models import Token
@@ -53,3 +55,23 @@ class LoginSerializer(serializers.Serializer):
         print("::: firstname ", user.first_name)
         data['user'] = user
         return data
+
+class VerifyAccountSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=150, write_only=True)
+
+    def validate_token(self, value):
+        """
+        Checks if the token is valid
+        """
+        account_activation_token = PasswordResetTokenGenerator()
+        if account_activation_token.check_token(self.instance, value):
+            return value
+        raise serializers.ValidationError("Email Not Valid")
+
+    def update(self, user, validated_data):
+        """
+        Activates user's account
+        """
+        user.is_verified = True
+        user.save()
+        return user
