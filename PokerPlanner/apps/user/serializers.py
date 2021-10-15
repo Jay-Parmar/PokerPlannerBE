@@ -1,9 +1,9 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
-from django.forms import ValidationError
 
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
 
 from apps.user import models as user_models
 
@@ -24,28 +24,32 @@ class LoginSerializer(serializers.Serializer):
     """
     Use Serializer for performing Login operations
     """
+    email = serializers.EmailField()
+    password = serializers.CharField(max_length=128, write_only=True)
+
     class Meta:
         model = user_models.User
         fields = ['email', 'password']
     
-    email = serializers.EmailField()
-    password = serializers.CharField()
-    
     def validate(self, data):
         """   
-        Validating password and email 
+        Validating password and email
         """
-        user_queryset = get_user_model().objects.filter(email=data.get('email'))
-        if not user_queryset:
-            raise ValidationError(
+        print("ijesiuci", data)
+        email = data.get('email', None)
+        password = data.get('password', None)
+        print("email: ", email)
+        print("pass: ", password)
+        if email is None or password is None:
+            raise serializers.ValidationError("Email and password required.")
+        user = authenticate(email=email, password=password)
+        print("::: after authenticate, user :: ", user)
+        if user is None:
+            raise serializers.ValidationError(
                 ("Invalid Credentials"),
                 code='invalid'
             )
-        if not check_password(data.get('password'), user_queryset[0].password):
-            raise ValidationError(
-                ('Invalid Credentials'),
-                code='invalid',
-            )
-        else:
-            data['user'] = get_user_model().objects.get(email=data.get('email'))
+
+        print("::: firstname ", user.first_name)
+        data['user'] = user
         return data

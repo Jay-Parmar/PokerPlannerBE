@@ -1,3 +1,4 @@
+from django.db.models.query_utils import InvalidQuery
 from rest_framework import permissions, status
 from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
@@ -17,14 +18,17 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     serializer_class = user_serializers.UserSerializer
     queryset = user_models.User.objects.all()
+    permission_classes = [permissions.AllowAny,]
 
     def create(self, request, *args, **kwargs):
-        '''Create a new User.'''
+        """
+        Create a new User.
+        """
         serializer = self.get_serializer(data=request.data["user"])
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({**serializer.data, "token": token.key}, status=status.HTTP_200_OK)
+        token = Token.objects.get(user=user)
+        return Response({**serializer.data, "token": token.key}, status=status.HTTP_201_CREATED)
 
 
 class Login(APIView):
@@ -36,20 +40,16 @@ class Login(APIView):
     permission_classes = [permissions.AllowAny]
     
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data["user"], context={'request': request}
-        )
+        serializer = self.serializer_class(data=request.data.get('user', {}))
         serializer.is_valid(raise_exception=True)
-        if 'user' not in serializer.validated_data:
-            return Response({"NOT FOUND"})
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
+        user = user_models.User.objects.get(email=serializer.data.get('email'))
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
             'id': user.pk,
             'email': user.email,
-            'first_name' : user.first_name,
-            'last_name' : user.last_name
+            'first_name': user.first_name,
+            'last_name': user.last_name
         })
 
 
@@ -63,6 +63,6 @@ class Logout(ObtainAuthToken):
         '''Removes token from user when they log out.'''
         try:
             request.user.auth_token.delete()
-        except Exception:
-            pass
-        return Response({"success": ("Successfully logged out.")}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_200_OK)
