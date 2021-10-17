@@ -33,8 +33,6 @@ class RemoveGroupMemberView(DestroyAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         group_id = serializer.data["group"]
-        print(serializer.data)
-        print(serializer.data["email"])
         email = serializer.data["email"]
         user_instance = user_models.User.objects.get(email=email)
         group_instance = group_models.Group.objects.get(id=group_id)
