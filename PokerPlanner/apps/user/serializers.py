@@ -28,6 +28,7 @@ class LoginSerializer(serializers.Serializer):
     """
     email = serializers.EmailField()
     password = serializers.CharField(max_length=128, write_only=True)
+    token = serializers.CharField(max_length=255, read_only=True)
 
     class Meta:
         model = user_models.User
@@ -53,8 +54,13 @@ class LoginSerializer(serializers.Serializer):
             )
 
         print("::: firstname ", user.first_name)
-        data['user'] = user
-        return data
+        return {
+            'email': user.email,
+            'token': user.token,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'id': user.id
+        }
 
 class VerifyAccountSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=150, write_only=True)

@@ -6,6 +6,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -27,7 +28,7 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Create a new User.
         """
-        serializer = self.get_serializer(data=request.data["user"])
+        serializer = self.get_serializer(data=request.data.get('user', {}))
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token = Token.objects.get(user=user)
@@ -39,23 +40,16 @@ class UserViewSet(viewsets.ModelViewSet):
 class Login(APIView):
     """
     View for Performing Login Verification
-    """       
+    """
     serializer_class = user_serializers.LoginSerializer
-    authentication_classes = []
+    renderer_classes = [JSONRenderer]
     permission_classes = [permissions.AllowAny]
     
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data.get('user', {}))
         serializer.is_valid(raise_exception=True)
-        user = user_models.User.objects.get(email=serializer.data.get('email'))
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({
-            'token': token.key,
-            'id': user.pk,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name
-        })
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class Logout(ObtainAuthToken):
