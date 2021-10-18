@@ -8,7 +8,7 @@ from django.dispatch import receiver
 
 from rest_framework.authtoken.models import Token
 
-from utils import (
+from libs import (
     models as util_models,
     managers as util_managers,
 )

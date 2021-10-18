@@ -3,8 +3,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from apps.group import models as group_models
-from utils import models as util_models
 
+from libs import models as util_models
 
 class Pokerboard(util_models.CommonInfo, util_models.SoftDeletionModel):
     """
