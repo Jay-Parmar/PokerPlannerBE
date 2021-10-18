@@ -11,12 +11,18 @@ class GroupSerializer(serializers.ModelSerializer):
     members = user_serializers.UserSerializer(many=True, read_only=True)
     class Meta:
         model = group_models.Group
-        fields = ['id', 'name', 'owner', 'members', 'created_at']
+        fields = ['id', 'name', 'owner', 'members']
         extra_kwargs = {
             'owner': {
                 'read_only': True,
             },
         }
+
+    def create(self, validated_data):
+        group_instance = group_models.Group.objects.create(**validated_data)
+        owner = validated_data['owner']
+        group_instance.members.add(owner)
+        return group_instance
 
 
 class AddGroupMemberSerializer(serializers.Serializer):
