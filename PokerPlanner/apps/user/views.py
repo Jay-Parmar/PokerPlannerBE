@@ -1,6 +1,3 @@
-from django.db.models.query_utils import InvalidQuery
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-
 from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -30,11 +27,9 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         serializer = self.get_serializer(data=request.data.get('user', {}))
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        token = Token.objects.get(user=user)
-        verification_token = PasswordResetTokenGenerator().make_token(user)
-        send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
-        return Response({**serializer.data, "token": token.key}, status=status.HTTP_200_OK)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class Login(APIView):
