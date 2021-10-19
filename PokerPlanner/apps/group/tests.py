@@ -17,6 +17,9 @@ class GroupTestCases(APITestCase):
     ADD_MEMBER_URL = reverse('add')
 
     def setUp(self):
+        """
+        Setup method for creating default user and it's token
+        """
         self.user = G(get_user_model())
         token = G(Token, user=self.user)
         self.group = G(group_models.Group, owner=self.user, name="Developers")
@@ -177,7 +180,3 @@ class GroupTestCases(APITestCase):
         response = self.client.post(self.ADD_MEMBER_URL, data=data)
         self.assertEqual(response.status_code, 400)
         self.assertDictEqual(response.data, expected_data)
-
-
-
-
