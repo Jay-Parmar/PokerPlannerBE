@@ -25,7 +25,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 class GroupMemberView(CreateAPIView, DestroyAPIView):
     """
-    Group user API for adding group member
+    Group user API for adding and removing group member
     """
     serializer_class = group_serializer.AddGroupMemberSerializer
     permission_classes = [IsGroupOwnerPermission]
