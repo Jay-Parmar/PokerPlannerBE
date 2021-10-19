@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 from rest_framework import serializers
+from rest_framework.authtoken.models import Token
 
 from apps.user import models as user_models
 
@@ -11,22 +12,11 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for Registration.
     """
-    token = serializers.CharField(max_length=255, read_only=True)
     class Meta:
         model = user_models.User
-        fields = ['id', 'email', 'password', 'first_name', 'last_name', 'token']
+        fields = ['id', 'email', 'password', 'first_name', 'last_name']
         extra_kwargs = {
             'password': {'write_only': True},
-        }
-
-    def create(self, validated_data):
-        user = user_models.User.objects.create(**validated_data)
-        return {
-            'email': user.email,
-            'token': user.token,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'id': user.id
         }
 
 
@@ -38,16 +28,24 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=128, write_only=True)
     first_name = serializers.CharField(max_length=128, read_only=True)
     last_name = serializers.CharField(max_length=128, read_only=True)
-    token = serializers.CharField(max_length=255, read_only=True)
+    token = serializers.SerializerMethodField()
     
+    class Meta:
+        model = user_models.User
+        fields = ['id', 'email', 'password', 'first_name', 'last_name', 'token']
+
+    def get_token(self, instance):
+        user = user_models.User.objects.get(email=instance['email'])
+        token, _ = Token.objects.get_or_create(user=user)
+        return token.key
+
     def validate(self, data):
         """   
         Validating password and email
         """
         email = data.get('email', None)
         password = data.get('password', None)
-        if email is None or password is None:
-            raise serializers.ValidationError("Email and password required.")
+
         user = authenticate(email=email, password=password)
         if user is None:
             raise serializers.ValidationError(
@@ -55,13 +53,9 @@ class LoginSerializer(serializers.Serializer):
                 code='invalid'
             )
 
-        return {
-            'email': user.email,
-            'token': user.token,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'id': user.id
-        }
+        data['first_name'] = user.first_name
+        data['last_name'] = user.last_name
+        return data
 
 
 class VerifyAccountSerializer(serializers.Serializer):

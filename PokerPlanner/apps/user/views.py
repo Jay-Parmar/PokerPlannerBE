@@ -21,15 +21,8 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = user_models.User.objects.all()
     permission_classes = [permissions.AllowAny,]
 
-    def create(self, request, *args, **kwargs):
-        """
-        Create a new User.
-        """
-        serializer = self.get_serializer(data=request.data.get('user', {}))
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    def get_serializer(self, *args, **kwargs):
+        return super().get_serializer(data=self.request.data.get('user', {}))
 
 
 class Login(APIView):

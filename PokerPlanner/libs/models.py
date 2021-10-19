@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-from utils import managers as util_managers
+from libs import managers as util_managers
 
 
 class CommonInfo(models.Model):

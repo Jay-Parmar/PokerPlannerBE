@@ -66,8 +66,3 @@ class User(AbstractBaseUser, PermissionsMixin, util_models.CommonInfo, util_mode
 
     def __str__(self):
         return self.email
-
-    @property
-    def token(self):
-        token, _ = Token.objects.get_or_create(user=self)
-        return token
