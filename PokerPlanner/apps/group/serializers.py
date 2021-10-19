@@ -95,4 +95,3 @@ class RemoveGroupMemberSerializer(serializers.Serializer):
             raise serializers.ValidationError("User does not exists in the group")
     
         return data
-        

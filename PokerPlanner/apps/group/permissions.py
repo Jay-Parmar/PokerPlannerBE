@@ -16,4 +16,3 @@ class IsGroupOwnerPermission(permissions.BasePermission):
         Checks if the group is created by current logged in user.
         """
         return request.user == group.owner
-        
