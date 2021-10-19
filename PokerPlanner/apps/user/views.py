@@ -23,7 +23,7 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
 
     def create(self, request, *args, **kwargs):
         '''Create a new User.'''
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data.get('user'))
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token = Token.objects.create(user=user)
@@ -53,7 +53,7 @@ class Login(APIView):
     
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(
-            data=request.data, context={'request': request}
+            data=request.data.get('user'), context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         if 'user' not in serializer.validated_data:
