@@ -14,7 +14,7 @@ class GroupTestCases(APITestCase):
     Group testcases for testing group list, details and add member functionality
     """
     GROUP_URL = reverse('group-list')
-    ADD_MEMBER_URL = reverse('add')
+    ADD_MEMBER_URL = reverse('member')
 
     def setUp(self):
         """

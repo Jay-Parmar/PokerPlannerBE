@@ -8,7 +8,6 @@ router = DefaultRouter()
 router.register('', group_views.GroupViewSet)
 
 urlpatterns = [
-        path('add', group_views.AddGroupMemberView.as_view(), name="add"),
-        path('remove', group_views.RemoveGroupMemberView.as_view(), name="remove")
+        path('members', group_views.GroupMemberView.as_view(), name="add"),
 
 ] + router.urls

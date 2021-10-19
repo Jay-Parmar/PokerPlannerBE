@@ -23,26 +23,18 @@ class GroupViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
 
-class AddGroupMemberView(CreateAPIView):
+class GroupMemberView(CreateAPIView, DestroyAPIView):
     """
     Group user API for adding group member
     """
     serializer_class = group_serializer.AddGroupMemberSerializer
     permission_classes = [IsGroupOwnerPermission]
 
-
-class RemoveGroupMemberView(DestroyAPIView):
-    """
-    Group user API for removing group member
-    """
-    serializer_class = group_serializer.RemoveGroupMemberSerializer
-    permission_classes = [IsGroupOwnerPermission]
-
     def destroy(self, request, *args, **kwargs):
         """
         Removes a member from a group
         """
-        serializer = self.get_serializer(data=request.data)
+        serializer = group_serializer.RemoveGroupMemberSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         group_id = serializer.data["group"]
         email = serializer.data["email"]
@@ -50,3 +42,6 @@ class RemoveGroupMemberView(DestroyAPIView):
         group_instance = group_models.Group.objects.get(id=group_id)
         group_instance.members.remove(user_instance)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+
+
