@@ -58,19 +58,6 @@ class Invite(util_models.CommonInfo):
     )
     is_accepted = models.BooleanField(default=False, help_text="Indicates if invitation accepted or not")
 
-    # def clean(self, *args, **kwargs):
-    #     print("Hi from clean :::: ")
-    #     fields = [self.email, self.user, self.group]
-    #     if fields.count(None) != 2:
-    #         raise ValidationError ("Wrong Input Provided")
-
-    #     super().clean(*args, **kwargs)
-
-    # def save(self, *args, **kwargs):
-    #     print("Hi from save :::: ")
-    #     self.clean()
-    #     super().save(*args, **kwargs)
-
     def __str__(self):
         return f'Pokerboard: {self.pokerboard} - Group: {self.group} - User: {self.user}'
 

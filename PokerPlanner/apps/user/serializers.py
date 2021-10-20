@@ -64,17 +64,11 @@ class ChangePasswordSerializer(serializers.Serializer):
     Serializer for password change endpoint.
     """
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True, required=True)
     old_password = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = user_models.User
-        fields = ('old_password', 'password', 'password2')
-
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
-        return attrs
+        fields = ['old_password', 'password']
 
     def validate_old_password(self, value):
         user = self.context['request'].user
