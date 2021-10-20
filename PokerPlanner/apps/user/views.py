@@ -34,7 +34,7 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
 
     def create(self, request, *args, **kwargs):
         '''Create a new User.'''
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data.get('user'))
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         verification_token = PasswordResetTokenGenerator().make_token(user)

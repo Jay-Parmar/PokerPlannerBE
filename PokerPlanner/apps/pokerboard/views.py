@@ -1,13 +1,14 @@
-from rest_framework import viewsets,status
-from rest_framework.permissions import IsAuthenticated
+from django.http import request
+from rest_framework import generics, viewsets,status
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.decorators import action
 
-from apps.pokerboard.models import Pokerboard, Invite
+from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials
 from apps.pokerboard.serializer import (
     PokerBoardCreationSerializer, PokerBoardSerializer, InviteCreateSerializer,
-    InviteSerializer, PokerboardUserSerializer
+    InviteSerializer, PokerboardUserSerializer, ManagerLoginSerializer
 )
 from apps.user.models import User
 from apps.group.models import Group
@@ -117,3 +118,12 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
                     user_id=user.id, pokerboard_id=pokerboard_id)
                 invite.delete()
             return Response(data={'msg': 'Invite successfully revoked.'})
+    
+class ManagerLoginView(generics.CreateAPIView):
+    queryset = ManagerCredentials.objects.all()
+    serializer_class = ManagerLoginSerializer
+    permission_classes = [IsAuthenticated,]
+
+    def perform_create(self, serializer):
+        print("::: self user", self.request.user)
+        serializer.save(user = self.request.user)

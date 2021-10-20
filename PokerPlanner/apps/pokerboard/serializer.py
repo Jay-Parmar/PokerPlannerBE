@@ -1,12 +1,15 @@
 from rest_framework import serializers, status
 
-from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardGroup, PokerboardUser
+from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardGroup, PokerboardUser, ManagerCredentials
 from apps.group.models import Group
 from apps.user.models import User
 from apps.user.serializers import UserSerializer
 from apps.pokerboard import constants
 
 from django.conf import settings
+
+from atlassian import Jira
+from decouple import config
 
 import requests
 from atlassian import Jira
@@ -30,6 +33,14 @@ class PokerBoardSerializer(serializers.ModelSerializer):
         model = Pokerboard
         fields = ['id', 'manager', 'title', 'description',
                   'estimate_type', 'ticket']
+class ManagerLoginSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = ManagerCredentials
+        fields = ['url', 'username', 'password']
+        extra_kwargs = {
+            'password': {'write_only': True},
+        }
 
 
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
@@ -48,12 +59,13 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         ]
 
     def get_ticket_responses(self, instance):
+        user_obj = list(instance.items())[0][-1]
+        manager = ManagerCredentials.objects.get(user=user_obj)
         jira = Jira(
-            url = config('JIRA_URL'),
-            username = config('JIRA_USERNAME'),
-            password = config('JIRA_PASSWORD'),
+            url = manager.url,
+            username = manager.username,
+            password = manager.password,
         )
-        # jira = settings.JIRA
         data = dict(instance)
         ticket_responses = []
         i = 0
