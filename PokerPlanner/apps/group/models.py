@@ -1,8 +1,7 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 
-from utils import models as util_models
-from utils import managers as util_managers
+from libs import models as util_models
 
 
 class Group(util_models.CommonInfo, util_models.SoftDeletionModel):

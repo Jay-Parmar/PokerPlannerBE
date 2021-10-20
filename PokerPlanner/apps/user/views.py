@@ -1,11 +1,10 @@
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-
 from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.response import Response
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.renderers import JSONRenderer
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.user import (
@@ -20,42 +19,25 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     serializer_class = user_serializers.UserSerializer
     queryset = user_models.User.objects.all()
+    permission_classes = [permissions.AllowAny,]
 
-    def create(self, request, *args, **kwargs):
-        '''Create a new User.'''
-        serializer = self.get_serializer(data=request.data["user"])
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        token = Token.objects.create(user=user)
-        verification_token = PasswordResetTokenGenerator().make_token(user)
-        send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
-        return Response({**serializer.data, "token": token.key}, status=status.HTTP_200_OK)
+    def get_serializer(self, *args, **kwargs):
+        return super().get_serializer(data=self.request.data.get('user', {}))
 
 
 class Login(APIView):
     """
     View for Performing Login Verification
-    """       
+    """
     serializer_class = user_serializers.LoginSerializer
-    authentication_classes = []
+    renderer_classes = [JSONRenderer]
     permission_classes = [permissions.AllowAny]
     
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data["user"], context={'request': request}
-        )
+        serializer = self.serializer_class(data=request.data.get('user', {}))
         serializer.is_valid(raise_exception=True)
-        if 'user' not in serializer.validated_data:
-            return Response({"NOT FOUND"})
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
-        return Response({
-            'token': token.key,
-            'id': user.pk,
-            'email': user.email,
-            'first_name' : user.first_name,
-            'last_name' : user.last_name
-        })
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class Logout(ObtainAuthToken):
@@ -68,9 +50,10 @@ class Logout(ObtainAuthToken):
         '''Removes token from user when they log out.'''
         try:
             request.user.auth_token.delete()
-        except Exception:
-            pass
-        return Response({"success": ("Successfully logged out.")}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_200_OK)
+
 
 class ActivateAccountView(UpdateAPIView):
     serializer_class = user_serializers.VerifyAccountSerializer

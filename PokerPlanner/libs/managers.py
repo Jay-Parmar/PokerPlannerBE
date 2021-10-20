@@ -21,6 +21,8 @@ class SoftDeletionManager(models.Manager):
     """
     Manager for Soft Deletion abstract Model.
     """
+    use_for_related_fields = True
+    
     def __init__(self, *args, **kwargs):
         self.alive_only = kwargs.pop('alive_only', True)
         super(SoftDeletionManager, self).__init__(*args, **kwargs)
@@ -32,6 +34,11 @@ class SoftDeletionManager(models.Manager):
 
     def hard_delete(self):
         return self.get_queryset().hard_delete()
+
+    def delete(self):
+        if self.alive_only:
+            return SoftDeletionQuerySet(self.model).delete()
+        return SoftDeletionQuerySet(self.model).hard_delete()
 
     def restore(self):
         return self.get_queryset().restore()

@@ -1,7 +1,6 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.forms import ValidationError
 
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
@@ -25,31 +24,39 @@ class LoginSerializer(serializers.Serializer):
     """
     Use Serializer for performing Login operations
     """
+    email = serializers.EmailField()
+    password = serializers.CharField(max_length=128, write_only=True)
+    first_name = serializers.CharField(max_length=128, read_only=True)
+    last_name = serializers.CharField(max_length=128, read_only=True)
+    token = serializers.SerializerMethodField()
+    
     class Meta:
         model = user_models.User
-        fields = ['email', 'password']
-    
-    email = serializers.EmailField()
-    password = serializers.CharField()
-    
+        fields = ['id', 'email', 'password', 'first_name', 'last_name', 'token']
+
+    def get_token(self, instance):
+        user = user_models.User.objects.get(email=instance['email'])
+        token, _ = Token.objects.get_or_create(user=user)
+        return token.key
+
     def validate(self, data):
         """   
-        Validating password and email 
+        Validating password and email
         """
-        user_queryset = get_user_model().objects.filter(email=data.get('email'))
-        if not user_queryset:
-            raise ValidationError(
+        email = data.get('email', None)
+        password = data.get('password', None)
+
+        user = authenticate(email=email, password=password)
+        if user is None:
+            raise serializers.ValidationError(
                 ("Invalid Credentials"),
                 code='invalid'
             )
-        if not check_password(data.get('password'), user_queryset[0].password):
-            raise ValidationError(
-                ('Invalid Credentials'),
-                code='invalid',
-            )
-        else:
-            data['user'] = get_user_model().objects.get(email=data.get('email'))
+
+        data['first_name'] = user.first_name
+        data['last_name'] = user.last_name
         return data
+
 
 class VerifyAccountSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=150, write_only=True)
