@@ -61,7 +61,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     class Meta:
         model = user_models.User
-        fields = ('old_password', 'password')
+        fields = ['old_password', 'password']
 
     def validate_old_password(self, value):
         user = self.context['request'].user

@@ -1,16 +1,35 @@
 from rest_framework import serializers, status
 
-from apps.pokerboard.models import Pokerboard, Ticket
+from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardGroup, PokerboardUser
+from apps.group.models import Group
 from apps.user.models import User
 from apps.user.serializers import UserSerializer
+from apps.pokerboard import constants
 
 from django.conf import settings
 
 import requests
-
+from atlassian import Jira
+from decouple import config
 
 class TicketsSerializer(serializers.ListSerializer):
     child = serializers.CharField()
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = ['pokerboard', 'ticket_id', 'order', 'status']
+
+
+class PokerBoardSerializer(serializers.ModelSerializer):
+    manager = UserSerializer()
+    ticket = TicketSerializer(source='tickets', many=True)
+
+    class Meta:
+        model = Pokerboard
+        fields = ['id', 'manager', 'title', 'description',
+                  'estimate_type', 'ticket']
 
 
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
@@ -29,7 +48,12 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         ]
 
     def get_ticket_responses(self, instance):
-        jira = settings.JIRA
+        jira = Jira(
+            url = config('JIRA_URL'),
+            username = config('JIRA_USERNAME'),
+            password = config('JIRA_PASSWORD'),
+        )
+        # jira = settings.JIRA
         data = dict(instance)
         ticket_responses = []
         i = 0
@@ -99,3 +123,81 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                 ticket_id=ticket_id, defaults={**new_ticket_data})
             ticket_response['key'] = ticket_id
         return pokerboard
+
+
+class InviteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invite
+        fields = '__all__'
+        extra_kwargs = {
+            'is_accepted': {'read_only': True}
+        }
+
+
+class InviteCreateSerializer(serializers.Serializer):
+    group_id = serializers.PrimaryKeyRelatedField(
+        queryset=Group.objects.all(), required=False)
+    email = serializers.EmailField(required=False)
+    user_role = serializers.ChoiceField(
+        choices=constants.ROLE_CHOICES, required=False)
+
+    def validate(self, attrs):
+        pokerboard_id = self.context['pokerboard']
+        method = self.context['method']
+        users = []
+
+        if method in ['DELETE', 'POST']:
+            if 'group_id' in attrs.keys():
+                group = attrs['group_id']
+                users = group.users.all()
+            
+            elif 'email' in attrs.keys():
+                try:
+                    user = User.objects.get(email=attrs['email'])
+                    users.append(user)
+                except User.DoesNotExist as e:
+                    # TODO Send mail to user
+                    raise serializers.ValidationError(e)
+            else:
+                raise serializers.ValidationError('Provide group_id/email!')
+
+            pokerboard = Pokerboard.objects.get(id=pokerboard_id)
+            for user in users:
+
+                if pokerboard.manager == user:
+                    raise serializers.ValidationError(
+                        'Manager cannot be invited!')
+
+                invite = Invite.objects.filter(
+                    user=user.id, pokerboard=pokerboard_id)
+
+                if method == 'POST' and invite.exists():
+                    if invite[0].is_accepted:
+                        raise serializers.ValidationError(
+                            'Already part of pokerboard')
+                    else:
+                        raise serializers.ValidationError(
+                            'Invite already sent!')
+
+                elif method == 'DELETE':
+                    if not invite.exists():
+                        raise serializers.ValidationError('User not invited!')
+                    elif invite.exists() and invite[0].is_accepted:
+                        raise serializers.ValidationError(
+                            'Accepted invites cannot be revoked.')
+
+        elif method in ['PATCH']:
+            user = self.context['user']
+            invite = Invite.objects.filter(
+                user=user, pokerboard=pokerboard_id)
+            if not invite.exists():
+                raise serializers.ValidationError('Invite doesnt exists')
+            if invite.exists() and invite[0].is_accepted:
+                raise serializers.ValidationError('Invite already accepted!')
+
+        return super().validate(attrs)
+
+class PokerboardUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PokerboardUser
+        fields = ['user', 'role', 'pokerboard']

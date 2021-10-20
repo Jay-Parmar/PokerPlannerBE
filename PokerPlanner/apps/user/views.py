@@ -5,14 +5,18 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
 
-from django.contrib.auth.hashers import check_password, make_password
+from apps.pokerboard import views
 
 from apps.user import (
     serializers as user_serializers,
     models as user_models
 )
+from apps.pokerboard.models import Invite
+from apps.pokerboard.serializer import InviteSerializer
 
+from django.http import JsonResponse
 
 class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView):
     """
@@ -31,6 +35,19 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
     
     def get_object(self):
         return self.request.user
+
+
+class ListInvite(viewsets.ModelViewSet):
+    """
+    List Invite to list a users invite
+    """
+    queryset = Invite.objects.all()
+    serializer_class = InviteSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'delete']
+    
+    def get_queryset(self):
+        return Invite.objects.filter(user_id=self.request.user.id, is_accepted=False)
     
 
 class ChangePasswordView(generics.UpdateAPIView):
