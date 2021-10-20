@@ -42,16 +42,13 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         ]
 
     def get_ticket_responses(self, instance):
-        print("::: instance",instance)
-        print(list(instance.items())[0][1])
-        manager = ManagerCredentials.objects.get(user=list(instance.items()).first().last())
-        print(manager)
+        user_obj = list(instance.items())[0][-1]
+        manager = ManagerCredentials.objects.get(user=user_obj)
         jira = Jira(
             url = manager.url,
             username = manager.username,
             password = manager.password,
         )
-        # jira = settings.JIRA
         data = dict(instance)
         ticket_responses = []
         i = 0

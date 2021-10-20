@@ -134,9 +134,3 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 CORS_ALLOW_ALL_ORIGINS = True
-
-# JIRA = Jira(
-#     url = config('JIRA_URL'),
-#     username = config('JIRA_USERNAME'),
-#     password = config('JIRA_PASSWORD'),
-#     )
