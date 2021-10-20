@@ -31,9 +31,10 @@ class Pokerboard(util_models.CommonInfo, util_models.SoftDeletionModel):
     )
     title = models.CharField(unique=True, max_length=20, help_text='Name of Pokerboard')
     description = models.CharField(max_length=100, help_text='Description', null=True, blank=True)
-    timer = models.PositiveIntegerField(help_text='Duration for voting (in seconds)')
+    timer = models.PositiveIntegerField(help_text='Duration for voting (in seconds)',null=True)
     estimation_cards = ArrayField(
-        models.PositiveIntegerField(), help_text="Array of estimation values choosed by user"
+        models.PositiveIntegerField(), help_text="Array of estimation values choosed by user",
+        null=True
     )
 
     def __str__(self):

@@ -11,4 +11,6 @@ urlpatterns = [
     path('login/', user_views.Login.as_view(), name="login"),
     path('logout/', user_views.Logout.as_view(), name="logout"),
     path('activate/<slug:pk>', user_views.ActivateAccountView.as_view(), name='activate'),
+    path('changepassword/<int:pk>/', user_views.ChangePasswordView.as_view())
+
 ] + router.urls
