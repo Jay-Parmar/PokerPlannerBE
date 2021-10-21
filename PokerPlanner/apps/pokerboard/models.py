@@ -5,7 +5,7 @@ from django.db.models.deletion import CASCADE
 
 from apps.group import models as group_models
 from apps.user import models as user_models
-from utils import models as util_models
+from libs import models as util_models
 
 from libs import models as util_models
 

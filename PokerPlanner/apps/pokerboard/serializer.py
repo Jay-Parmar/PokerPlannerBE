@@ -33,6 +33,8 @@ class PokerBoardSerializer(serializers.ModelSerializer):
         model = Pokerboard
         fields = ['id', 'manager', 'title', 'description',
                   'estimate_type', 'ticket']
+
+                  
 class ManagerLoginSerializer(serializers.ModelSerializer):
     
     class Meta:
