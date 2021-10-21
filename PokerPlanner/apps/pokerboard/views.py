@@ -1,3 +1,4 @@
+from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.http import request
 from rest_framework import generics, viewsets,status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -80,10 +81,15 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             # TODO : Send mail for signup if doesnt exist
             for user in users:
-                serializer = InviteSerializer(
-                    data={**request.data, 'pokerboard': pokerboard_id, 'user': user.id, 'group': group_id})
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                try:
+                    invite = Invite.objects.get(user=user.id,pokerboard=pokerboard_id)
+                    invite.status = 0
+                    invite.save()
+                except ObjectDoesNotExist:
+                    serializer = InviteSerializer(
+                        data={**request.data, 'pokerboard': pokerboard_id, 'user': user.id, 'group': group_id})
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
             return Response({'msg': '{choice} successfully invited'.format(choice='Group' if group_id is not None else 'User')})
 
         if request.method == 'PATCH':
@@ -93,8 +99,6 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             invite = Invite.objects.get(
                 user=user.id, pokerboard=pokerboard_id)
-            # import pdb
-            # pdb.set_trace()
             if invite.user == None:
                pass
                #TODO: if comes through group
@@ -107,7 +111,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
                     data=user_data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
-                invite.is_accepted = True
+                invite.status = 1
                 invite.save()
 
             return Response(data={'msg': 'Welcome to the pokerboard!'})
@@ -116,7 +120,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             for user in users:
                 invite = Invite.objects.get(
                     user_id=user.id, pokerboard_id=pokerboard_id)
-                invite.delete()
+                invite.status = -1
             return Response(data={'msg': 'Invite successfully revoked.'})
     
 class ManagerLoginView(generics.CreateAPIView):

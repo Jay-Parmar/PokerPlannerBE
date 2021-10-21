@@ -37,17 +37,17 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
         serializer = self.get_serializer(data=request.data.get('user'))
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        verification_token = PasswordResetTokenGenerator().make_token(user)
-        send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
+        # verification_token = PasswordResetTokenGenerator().make_token(user)
+        # send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
     
     def get_object(self):
         return self.request.user
 
 
-class ListInvite(viewsets.ModelViewSet):
+class InviteViewset(viewsets.ModelViewSet):
     """
-    List Invite to list a users invite
+    List Invite and Delete Invite of users invite
     """
     queryset = Invite.objects.all()
     serializer_class = InviteSerializer
@@ -55,7 +55,11 @@ class ListInvite(viewsets.ModelViewSet):
     http_method_names = ['get', 'delete']
     
     def get_queryset(self):
-        return Invite.objects.filter(user_id=self.request.user.id, is_accepted=False)
+        return Invite.objects.filter(user_id=self.request.user.id, status=0)
+    
+    def perform_destroy(self, instance):
+        instance.status = 2
+        instance.save()
     
 
 class ChangePasswordView(generics.UpdateAPIView):

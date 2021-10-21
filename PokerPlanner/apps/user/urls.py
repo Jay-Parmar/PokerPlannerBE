@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from apps.user import views as user_views
 
 router = DefaultRouter()
-router.register('', user_views.ListInvite)
+router.register('', user_views.InviteViewset)
 
 urlpatterns = [
     path('',user_views.UserViewSet.as_view()),

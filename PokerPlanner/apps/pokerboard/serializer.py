@@ -144,7 +144,7 @@ class InviteSerializer(serializers.ModelSerializer):
         model = Invite
         fields = '__all__'
         extra_kwargs = {
-            'is_accepted': {'read_only': True}
+            'status': {'read_only': True}
         }
 
 
@@ -164,7 +164,7 @@ class InviteCreateSerializer(serializers.Serializer):
             if 'group_id' in attrs.keys():
                 group = attrs['group_id']
                 users = group.users.all()
-            
+
             elif 'email' in attrs.keys():
                 try:
                     user = User.objects.get(email=attrs['email'])
@@ -186,17 +186,17 @@ class InviteCreateSerializer(serializers.Serializer):
                     user=user.id, pokerboard=pokerboard_id)
 
                 if method == 'POST' and invite.exists():
-                    if invite[0].is_accepted:
+                    if invite[0].status == 1:
                         raise serializers.ValidationError(
                             'Already part of pokerboard')
-                    else:
+                    elif invite[0].status == 0:
                         raise serializers.ValidationError(
                             'Invite already sent!')
 
                 elif method == 'DELETE':
                     if not invite.exists():
                         raise serializers.ValidationError('User not invited!')
-                    elif invite.exists() and invite[0].is_accepted:
+                    elif invite.exists() and invite[0].status == 1:
                         raise serializers.ValidationError(
                             'Accepted invites cannot be revoked.')
 
@@ -204,9 +204,9 @@ class InviteCreateSerializer(serializers.Serializer):
             user = self.context['user']
             invite = Invite.objects.filter(
                 user=user, pokerboard=pokerboard_id)
-            if not invite.exists():
+            if (not invite.exists()) or invite[0].status == 2:
                 raise serializers.ValidationError('Invite doesnt exists')
-            if invite.exists() and invite[0].is_accepted:
+            if invite.exists() and invite[0].status == 1:
                 raise serializers.ValidationError('Invite already accepted!')
 
         return super().validate(attrs)
