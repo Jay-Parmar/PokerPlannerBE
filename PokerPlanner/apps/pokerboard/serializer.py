@@ -1,4 +1,5 @@
 from rest_framework import serializers, status
+from rest_framework.response import Response
 
 from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardGroup, PokerboardUser, ManagerCredentials
 from apps.group.models import Group
@@ -6,14 +7,8 @@ from apps.user.models import User
 from apps.user.serializers import UserSerializer
 from apps.pokerboard import constants
 
-from django.conf import settings
-
 from atlassian import Jira
-from decouple import config
 
-import requests
-from atlassian import Jira
-from decouple import config
 
 class TicketsSerializer(serializers.ListSerializer):
     child = serializers.CharField()
@@ -36,6 +31,9 @@ class PokerBoardSerializer(serializers.ModelSerializer):
 
                   
 class ManagerLoginSerializer(serializers.ModelSerializer):
+    """
+    Serializer to save Manager Credentials in Database.
+    """
     
     class Meta:
         model = ManagerCredentials
@@ -111,8 +109,8 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                     ticket_response['status_code'] = status.HTTP_200_OK
                 ticket_response['key'] = key
                 ticket_responses.append(ticket_response)
-        except requests.exceptions.RequestException as e:
-            raise serializers.ValidationError("Invalid Query")
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
         return ticket_responses
 
     def create(self, validated_data):
@@ -210,6 +208,7 @@ class InviteCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError('Invite already accepted!')
 
         return super().validate(attrs)
+
 
 class PokerboardUserSerializer(serializers.ModelSerializer):
     class Meta:

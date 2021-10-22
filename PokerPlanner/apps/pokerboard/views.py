@@ -1,20 +1,20 @@
-from django.http import request
 from rest_framework import generics, viewsets,status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.decorators import action
 
+from atlassian import Jira
+
+from apps.group.models import Group
 from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials
 from apps.pokerboard.serializer import (
     PokerBoardCreationSerializer, PokerBoardSerializer, InviteCreateSerializer,
     InviteSerializer, PokerboardUserSerializer, ManagerLoginSerializer
 )
-from apps.user.models import User
-from apps.group.models import Group
 from apps.pokerboard.permissions import CustomPermissions
+from apps.user.models import User
 
-from django.http import JsonResponse
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
     """
@@ -28,7 +28,6 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             return PokerBoardCreationSerializer
         return PokerBoardSerializer
     
-    
     def create(self, request, *args, **kwargs):
         """
         Create new pokerboard
@@ -41,7 +40,6 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
 
     @action(detail=True, methods=['get','post', 'patch', 'delete'], permission_classes=[IsAuthenticated, CustomPermissions])
     def invite(self, request, pk=None):
@@ -118,7 +116,8 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
                     user_id=user.id, pokerboard_id=pokerboard_id)
                 invite.delete()
             return Response(data={'msg': 'Invite successfully revoked.'})
-    
+
+
 class ManagerLoginView(generics.CreateAPIView):
     queryset = ManagerCredentials.objects.all()
     serializer_class = ManagerLoginSerializer
@@ -127,3 +126,21 @@ class ManagerLoginView(generics.CreateAPIView):
     def perform_create(self, serializer):
         print("::: self user", self.request.user)
         serializer.save(user = self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            jira = Jira(
+                url = request.data['url'],
+                username = request.data['username'],
+                password = request.data['password'],
+            )
+            response = jira.jql("")
+            if not response['total']:
+                raise serializers.ValidationError("No issue tickets Found")
+        except Exception as err:
+            raise serializers.ValidationError("Invalid Credentials")
+
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as err:
+            return Response({'message': 'Credentials already present'}, status=status.HTTP_400_BAD_REQUEST)
