@@ -1,12 +1,13 @@
+from decouple import Undefined
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.http import request
-from rest_framework import generics, viewsets,status
+from rest_framework import generics, views, viewsets,status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.decorators import action
 
-from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials
+from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials, PokerboardUser
 from apps.pokerboard.serializer import (
     PokerBoardCreationSerializer, PokerBoardSerializer, InviteCreateSerializer,
     InviteSerializer, PokerboardUserSerializer, ManagerLoginSerializer
@@ -76,20 +77,25 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             elif 'group_id' in request.data.keys():
                 group_id = request.data['group_id']
                 group = Group.objects.get(id=group_id)
-                users = group.users.all()
+                users = group.members.all()
 
         if request.method == 'POST':
-            # TODO : Send mail for signup if doesnt exist
+            existing_players = []
             for user in users:
-                try:
-                    invite = Invite.objects.get(user=user.id,pokerboard=pokerboard_id)
-                    invite.status = 0
-                    invite.save()
-                except ObjectDoesNotExist:
-                    serializer = InviteSerializer(
-                        data={**request.data, 'pokerboard': pokerboard_id, 'user': user.id, 'group': group_id})
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
+                poke_user = PokerboardUser.objects.filter(user=user.id,pokerboard=pokerboard_id)
+                if not poke_user.exists():
+                    try:
+                        invite = Invite.objects.get(user=user.id,pokerboard=pokerboard_id)
+                        invite.status = 0
+                        invite.save()
+                    except ObjectDoesNotExist:
+                        serializer = InviteSerializer(
+                            data={**request.data, 'pokerboard': pokerboard_id, 'user': user.id, 'group': group_id})
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save() 
+                else:
+                    existing_players.append(user.email)
+            print(existing_players)
             return Response({'msg': '{choice} successfully invited'.format(choice='Group' if group_id is not None else 'User')})
 
         if request.method == 'PATCH':
@@ -99,20 +105,18 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             invite = Invite.objects.get(
                 user=user.id, pokerboard=pokerboard_id)
-            if invite.user == None:
-               pass
-               #TODO: if comes through group
-            else:
-                user_data = {
-                    "user": user.id,
-                    "pokerboard": pokerboard_id
-                }
-                serializer = PokerboardUserSerializer(
-                    data=user_data)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-                invite.status = 1
-                invite.save()
+            
+            user_data = {
+                "user": user.id,
+                "pokerboard": pokerboard_id,
+                'group': invite.group_id,
+            }
+            serializer = PokerboardUserSerializer(
+                data=user_data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            invite.status = 1
+            invite.save()
 
             return Response(data={'msg': 'Welcome to the pokerboard!'})
 
@@ -131,3 +135,9 @@ class ManagerLoginView(generics.CreateAPIView):
     def perform_create(self, serializer):
         print("::: self user", self.request.user)
         serializer.save(user = self.request.user)
+
+
+class ListPokerboardMembers(viewsets.ModelViewSet):
+
+    queryset = PokerboardUser.objects.all()
+    serializer_class = PokerboardUserSerializer

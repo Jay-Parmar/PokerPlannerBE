@@ -5,6 +5,7 @@ from apps.group.models import Group
 from apps.user.models import User
 from apps.user.serializers import UserSerializer
 from apps.pokerboard import constants
+from apps.user.tasks import send_invite_task
 
 from django.conf import settings
 
@@ -98,6 +99,8 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
 
         jql = myJql
         try:
+            if(len(jql)==0):
+                raise requests.exceptions.RequestException
             issues = jira.jql(jql)['issues']
             for issue in issues:
                 ticket_response = {}
@@ -163,15 +166,16 @@ class InviteCreateSerializer(serializers.Serializer):
         if method in ['DELETE', 'POST']:
             if 'group_id' in attrs.keys():
                 group = attrs['group_id']
-                users = group.users.all()
+                users = group.members.all()
+                return super().validate(attrs)
 
             elif 'email' in attrs.keys():
                 try:
                     user = User.objects.get(email=attrs['email'])
                     users.append(user)
                 except User.DoesNotExist as e:
-                    # TODO Send mail to user
-                    raise serializers.ValidationError(e)
+                    # send_invite_task.delay(attrs['email'])
+                    raise serializers.ValidationError("USer does not exists. Email to signup in pokerplanner has been sent")
             else:
                 raise serializers.ValidationError('Provide group_id/email!')
 
