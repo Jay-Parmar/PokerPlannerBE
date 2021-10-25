@@ -3,18 +3,14 @@ from rest_framework import generics, viewsets,status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import serializers
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 
-from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials
-from apps.pokerboard.serializer import (
-    PokerBoardCreationSerializer, PokerBoardSerializer, InviteCreateSerializer,
-    InviteSerializer, PokerboardUserSerializer, ManagerLoginSerializer
-)
+from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials, PokerboardUser
+from apps.pokerboard import serializer as pokerboard_serializers
 from apps.user.models import User
 from apps.group.models import Group
 from apps.pokerboard.permissions import CustomPermissions
 
-from django.http import JsonResponse
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
     """
@@ -25,8 +21,8 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
-            return PokerBoardCreationSerializer
-        return PokerBoardSerializer
+            return pokerboard_serializers.PokerBoardCreationSerializer
+        return pokerboard_serializers.PokerBoardSerializer
     
     
     def create(self, request, *args, **kwargs):
@@ -65,7 +61,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             users = []
             group_id = None
 
-            serializer = InviteCreateSerializer(
+            serializer = pokerboard_serializers.InviteCreateSerializer(
                 data=request.data, context=context)
             serializer.is_valid(raise_exception=True)
 
@@ -80,7 +76,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             # TODO : Send mail for signup if doesnt exist
             for user in users:
-                serializer = InviteSerializer(
+                serializer = pokerboard_serializers.InviteSerializer(
                     data={**request.data, 'pokerboard': pokerboard_id, 'user': user.id, 'group': group_id})
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
@@ -88,7 +84,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
 
         if request.method == 'PATCH':
             user = request.user
-            serializer = InviteCreateSerializer(
+            serializer = pokerboard_serializers.InviteCreateSerializer(
                 data=request.data, context={**context, 'user': user})
             serializer.is_valid(raise_exception=True)
             invite = Invite.objects.get(
@@ -103,7 +99,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
                     "user": user.id,
                     "pokerboard": pokerboard_id
                 }
-                serializer = PokerboardUserSerializer(
+                serializer = pokerboard_serializers.PokerboardUserSerializer(
                     data=user_data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
@@ -118,12 +114,32 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
                     user_id=user.id, pokerboard_id=pokerboard_id)
                 invite.delete()
             return Response(data={'msg': 'Invite successfully revoked.'})
-    
+
+
 class ManagerLoginView(generics.CreateAPIView):
     queryset = ManagerCredentials.objects.all()
-    serializer_class = ManagerLoginSerializer
+    serializer_class = pokerboard_serializers.ManagerLoginSerializer
     permission_classes = [IsAuthenticated,]
 
     def perform_create(self, serializer):
         print("::: self user", self.request.user)
         serializer.save(user = self.request.user)
+
+
+class PokerboardMembersView(viewsets.ModelViewSet):
+    """
+    Pokerboard member API View for listing and removing user/groups
+    """
+    queryset = PokerboardUser.objects.all()
+    serializer_class = pokerboard_serializers.PokerboardUserSerializer
+    permission_classes = [IsAuthenticated,]
+
+    def retrieve(self, request, pk = None):
+        """
+        Gets all the pokerboard's members
+        """
+        group_members = PokerboardUser.objects.filter(pokerboard=pk)
+        members = self.serializer_class(group_members, many=True)
+        return Response(members.data)
+    
+        

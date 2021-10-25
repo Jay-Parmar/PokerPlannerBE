@@ -1,6 +1,7 @@
+from django.contrib.postgres import fields
 from rest_framework import serializers, status
 
-from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardGroup, PokerboardUser, ManagerCredentials
+from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardUser, ManagerCredentials
 from apps.group.models import Group
 from apps.user.models import User
 from apps.user.serializers import UserSerializer
@@ -211,7 +212,27 @@ class InviteCreateSerializer(serializers.Serializer):
 
         return super().validate(attrs)
 
+class PokerBoardUserGroupSerialzier(serializers.ModelSerializer):
+    """
+    Serializer to fetch group name and id for users belonging to
+    a particular pokerboard
+    """
+    class Meta:
+        model = Group
+        fields = ['id', 'name']
+
+
 class PokerboardUserSerializer(serializers.ModelSerializer):
+    """
+    Serialier to list members belonging to a pokerboard
+    """
+    user = UserSerializer()
+    role = serializers.SerializerMethodField()
+    group = PokerBoardUserGroupSerialzier()
+
     class Meta:
         model = PokerboardUser
-        fields = ['user', 'role', 'pokerboard']
+        fields = ['id', 'user', 'role', 'pokerboard', 'group']
+    
+    def get_role(self, obj):
+        return obj.get_role_display()
