@@ -124,9 +124,10 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             for user in users:
                 invite = Invite.objects.get(
                     user_id=user.id, pokerboard_id=pokerboard_id)
-                invite.status = -1
+                invite.status = 2
             return Response(data={'msg': 'Invite successfully revoked.'})
-    
+
+ 
 class ManagerLoginView(generics.CreateAPIView):
     queryset = ManagerCredentials.objects.all()
     serializer_class = ManagerLoginSerializer
@@ -135,9 +136,3 @@ class ManagerLoginView(generics.CreateAPIView):
     def perform_create(self, serializer):
         print("::: self user", self.request.user)
         serializer.save(user = self.request.user)
-
-
-class ListPokerboardMembers(viewsets.ModelViewSet):
-
-    queryset = PokerboardUser.objects.all()
-    serializer_class = PokerboardUserSerializer
