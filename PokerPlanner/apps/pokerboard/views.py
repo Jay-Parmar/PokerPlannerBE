@@ -1,22 +1,19 @@
-from decouple import Undefined
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
-from django.http import request
-from rest_framework import generics, views, viewsets,status
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import serializers
-from rest_framework.decorators import action
+from django.core.exceptions import ObjectDoesNotExist
 
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import generics, views, viewsets,status
+from rest_framework.response import Response
+
+from apps.user.models import User
+from apps.group.models import Group
 from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials, PokerboardUser
 from apps.pokerboard.serializer import (
     PokerBoardCreationSerializer, PokerBoardSerializer, InviteCreateSerializer,
     InviteSerializer, PokerboardUserSerializer, ManagerLoginSerializer
 )
-from apps.user.models import User
-from apps.group.models import Group
 from apps.pokerboard.permissions import CustomPermissions
 
-from django.http import JsonResponse
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
     """
