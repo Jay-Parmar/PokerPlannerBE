@@ -1,16 +1,13 @@
-from django.db.models import manager
-from django.http import request
 from rest_framework import generics, viewsets,status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import serializers
-from rest_framework.decorators import action, permission_classes
 
+from apps.group.models import Group
 from apps.pokerboard import models as pokerboard_models
 from apps.pokerboard import serializer as pokerboard_serializers
-from apps.user.models import User
-from apps.group.models import Group
 from apps.pokerboard.permissions import CustomPermissions
+from apps.user.models import User
 
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
@@ -26,12 +23,8 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         return pokerboard_serializers.PokerBoardSerializer
     
     def get_queryset(self):
-        """
-        Gets all the pokerboard's where current user is manager
-        """
         return pokerboard_models.Pokerboard.objects.filter(manager=self.request.user)
-    
-    
+
     def create(self, request, *args, **kwargs):
         """
         Create new pokerboard
