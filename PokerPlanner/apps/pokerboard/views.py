@@ -1,3 +1,4 @@
+from django.db.models import manager
 from django.http import request
 from rest_framework import generics, viewsets,status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -5,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import serializers
 from rest_framework.decorators import action, permission_classes
 
-from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials, PokerboardUser
+from apps.pokerboard import models as pokerboard_models
 from apps.pokerboard import serializer as pokerboard_serializers
 from apps.user.models import User
 from apps.group.models import Group
@@ -16,13 +17,19 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
     """
     Pokerboard View for CRUD operations
     """
-    queryset = Pokerboard.objects.all()
+    queryset = pokerboard_models.Pokerboard.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return pokerboard_serializers.PokerBoardCreationSerializer
         return pokerboard_serializers.PokerBoardSerializer
+    
+    def get_queryset(self):
+        """
+        Gets all the pokerboard's where current user is manager
+        """
+        return pokerboard_models.Pokerboard.objects.filter(manager=self.request.user)
     
     
     def create(self, request, *args, **kwargs):
@@ -87,7 +94,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             serializer = pokerboard_serializers.InviteCreateSerializer(
                 data=request.data, context={**context, 'user': user})
             serializer.is_valid(raise_exception=True)
-            invite = Invite.objects.get(
+            invite = pokerboard_models.Invite.objects.get(
                 user=user.id, pokerboard=pokerboard_id)
             # import pdb
             # pdb.set_trace()
@@ -110,14 +117,14 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
 
         if request.method == 'DELETE':
             for user in users:
-                invite = Invite.objects.get(
+                invite = pokerboard_models.Invite.objects.get(
                     user_id=user.id, pokerboard_id=pokerboard_id)
                 invite.delete()
             return Response(data={'msg': 'Invite successfully revoked.'})
 
 
 class ManagerLoginView(generics.CreateAPIView):
-    queryset = ManagerCredentials.objects.all()
+    queryset = pokerboard_models.ManagerCredentials.objects.all()
     serializer_class = pokerboard_serializers.ManagerLoginSerializer
     permission_classes = [IsAuthenticated,]
 
@@ -130,7 +137,7 @@ class PokerboardMembersView(viewsets.ModelViewSet):
     """
     Pokerboard member API View for listing and removing user/groups
     """
-    queryset = PokerboardUser.objects.all()
+    queryset = pokerboard_models.PokerboardUser.objects.all()
     serializer_class = pokerboard_serializers.PokerboardUserSerializer
     permission_classes = [IsAuthenticated,]
 
@@ -138,7 +145,7 @@ class PokerboardMembersView(viewsets.ModelViewSet):
         """
         Gets all the pokerboard's members
         """
-        group_members = PokerboardUser.objects.filter(pokerboard=pk)
+        group_members = pokerboard_models.PokerboardUser.objects.filter(pokerboard=pk)
         members = self.serializer_class(group_members, many=True)
         return Response(members.data)
     
