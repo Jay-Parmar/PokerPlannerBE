@@ -1,28 +1,17 @@
-from django.contrib.auth.hashers import check_password, make_password
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-
-from rest_framework import generics, permissions, request, serializers, status, viewsets
-from rest_framework.authtoken.models import Token
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.generics import UpdateAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import action
 
-from apps.pokerboard import views
-
-from apps.user import (
-    serializers as user_serializers,
-    models as user_models
-)
-from .tasks import send_email_task
+from apps.user import (serializers as user_serializers, models as user_models)
 from apps.pokerboard.models import Invite
 from apps.pokerboard.serializer import InviteSerializer
+from .tasks import send_email_task
+from .verificationToken import account_activation_token
 
-from django.http import JsonResponse
 
 class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView):
     """
@@ -37,7 +26,7 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
         serializer = self.get_serializer(data=request.data.get('user'))
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        verification_token = PasswordResetTokenGenerator().make_token(user)
+        verification_token = account_activation_token.make_token(user)
         send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
     
@@ -99,6 +88,9 @@ class Logout(ObtainAuthToken):
 
 
 class ActivateAccountView(UpdateAPIView):
+    """
+    Updates user isAccepted field to True
+    """
     serializer_class = user_serializers.VerifyAccountSerializer
     queryset = user_models.User.objects.all()
     permission_classes = [AllowAny]

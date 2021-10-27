@@ -1,19 +1,16 @@
+import requests
+
 from rest_framework import serializers, status
 
-from apps.pokerboard.models import Pokerboard, Ticket, Invite, PokerboardGroup, PokerboardUser, ManagerCredentials
+from apps.pokerboard import models as pokerboard_models
 from apps.group.models import Group
 from apps.user.models import User
 from apps.user.serializers import UserSerializer
 from apps.pokerboard import constants
 
-from django.conf import settings
-
 from atlassian import Jira
-from decouple import config
 
-import requests
-from atlassian import Jira
-from decouple import config
+
 
 class TicketsSerializer(serializers.ListSerializer):
     child = serializers.CharField()
@@ -21,7 +18,7 @@ class TicketsSerializer(serializers.ListSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Ticket
+        model = pokerboard_models.Ticket
         fields = ['pokerboard', 'ticket_id', 'order', 'status']
 
 
@@ -30,15 +27,15 @@ class PokerBoardSerializer(serializers.ModelSerializer):
     ticket = TicketSerializer(source='tickets', many=True)
 
     class Meta:
-        model = Pokerboard
+        model = pokerboard_models.Pokerboard
         fields = ['id', 'manager', 'title', 'description',
                   'estimate_type', 'ticket']
 
-                  
+
 class ManagerLoginSerializer(serializers.ModelSerializer):
     
     class Meta:
-        model = ManagerCredentials
+        model = pokerboard_models.ManagerCredentials
         fields = ['url', 'username', 'password']
         extra_kwargs = {
             'password': {'write_only': True},
@@ -54,7 +51,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
     ticket_responses = serializers.SerializerMethodField()
 
     class Meta:
-        model = Pokerboard
+        model = pokerboard_models.Pokerboard
         fields = [
             'manager_id', 'title', 'description', 'tickets', 'sprint_id',
             'ticket_responses', 'jql'
@@ -62,7 +59,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
 
     def get_ticket_responses(self, instance):
         user_obj = list(instance.items())[0][-1]
-        manager = ManagerCredentials.objects.get(user=user_obj)
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=user_obj)
         jira = Jira(
             url = manager.url,
             username = manager.username,
@@ -102,7 +99,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             for issue in issues:
                 ticket_response = {}
                 key = issue['key']
-                obj = Ticket.objects.filter(ticket_id=key)
+                obj = pokerboard_models.Ticket.objects.filter(ticket_id=key)
                 if obj.exists():
                     ticket_response['message'] = 'Ticket part of another pokerboard.'
                     ticket_response['status_code'] = status.HTTP_400_BAD_REQUEST
@@ -122,7 +119,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         ticket_responses = new_pokerboard.pop('ticket_responses')
         if len(ticket_responses) == 0:
             raise serializers.ValidationError("Invalid Sprint!")
-        pokerboard = Pokerboard.objects.create(**new_pokerboard)
+        pokerboard = pokerboard_models.Pokerboard.objects.create(**new_pokerboard)
         for ticket_response in ticket_responses:
             if ticket_response['status_code'] != 200:
                 continue
@@ -133,7 +130,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             new_ticket_data['order'] = count
             ticket_id = ticket_response['key']
             ticket_response.pop('key')
-            Ticket.objects.get_or_create(
+            pokerboard_models.Ticket.objects.get_or_create(
                 ticket_id=ticket_id, defaults={**new_ticket_data})
             ticket_response['key'] = ticket_id
         return pokerboard
@@ -141,7 +138,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
 
 class InviteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Invite
+        model = pokerboard_models.Invite
         fields = '__all__'
         extra_kwargs = {
             'is_accepted': {'read_only': True}
@@ -175,14 +172,14 @@ class InviteCreateSerializer(serializers.Serializer):
             else:
                 raise serializers.ValidationError('Provide group_id/email!')
 
-            pokerboard = Pokerboard.objects.get(id=pokerboard_id)
+            pokerboard = pokerboard_models.Pokerboard.objects.get(id=pokerboard_id)
             for user in users:
 
                 if pokerboard.manager == user:
                     raise serializers.ValidationError(
                         'Manager cannot be invited!')
 
-                invite = Invite.objects.filter(
+                invite = pokerboard_models.Invite.objects.filter(
                     user=user.id, pokerboard=pokerboard_id)
 
                 if method == 'POST' and invite.exists():
@@ -202,7 +199,7 @@ class InviteCreateSerializer(serializers.Serializer):
 
         elif method in ['PATCH']:
             user = self.context['user']
-            invite = Invite.objects.filter(
+            invite = pokerboard_models.Invite.objects.filter(
                 user=user, pokerboard=pokerboard_id)
             if not invite.exists():
                 raise serializers.ValidationError('Invite doesnt exists')
@@ -211,7 +208,72 @@ class InviteCreateSerializer(serializers.Serializer):
 
         return super().validate(attrs)
 
-class PokerboardUserSerializer(serializers.ModelSerializer):
+
+class PokerBoardUserGroupSerialzier(serializers.ModelSerializer):
+    """
+    Serializer to fetch group name and id for users belonging to
+    a particular pokerboard
+    """
     class Meta:
-        model = PokerboardUser
-        fields = ['user', 'role', 'pokerboard']
+        model = Group
+        fields = ['id', 'name']
+
+
+class PokerboardUserSerializer(serializers.ModelSerializer):
+    """
+    Serialier to list members belonging to a pokerboard
+    """
+    user = UserSerializer()
+    role = serializers.SerializerMethodField()
+    group = PokerBoardUserGroupSerialzier()
+
+    class Meta:
+        model = pokerboard_models.PokerboardUser
+        fields = ['id', 'user', 'role', 'pokerboard', 'group']
+    
+    def get_role(self, obj):
+        return obj.get_role_display()
+
+
+class PokerboardTicketSerializer(serializers.ModelSerializer):
+    """
+    PokerBoard tickets Serializer for updating and listing pokerboard tickets.
+    """
+    pokerboard = PokerBoardSerializer()
+    class Meta:
+        model = pokerboard_models.Ticket
+        fields = ['id', 'pokerboard', 'ticket_id', 'estimate', 'order', 'status']
+        # TODO: add a methodfield here so that while fetching an  entity from ticket table
+        # ticket details come in that request too. and on updatinf final estimate it should be
+        #updated on JIRA as well
+
+
+class CommentSerializer(serializers.Serializer):
+    """
+    Comment Serializer to comment on a ticket 
+    """
+    comment = serializers.CharField()
+    ticket_id = serializers.SlugField()
+
+
+class VoteSerializer(serializers.ModelSerializer):
+    """
+    Vote Serializer for creating and listing votes.
+    """
+    class Meta:
+        model = pokerboard_models.UserTicketEstimate
+        fields = ["estimate", "ticket_id", "user", "estimation_time"]
+    
+    def create(self, validated_data):
+        """
+        Create or update a vote
+        """
+        vote, created = pokerboard_models.UserTicketEstimate.objects.update_or_create(
+            estimate=validated_data['estimate'],
+            ticket_id=validated_data['ticket_id'],
+            user=validated_data['user'],
+            estimation_time=validated_data['estimation_time'],
+            defaults={
+                'estimate':validated_data['estimate']
+            }
+        )

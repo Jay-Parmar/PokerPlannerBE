@@ -87,8 +87,8 @@ class Ticket(util_models.CommonInfo, util_models.SoftDeletionModel):
     estimate = models.PositiveIntegerField(null=True, help_text="Final estimate of ticket")
     order = models.PositiveIntegerField(help_text="Order of displaying of tickets")
     status = models.PositiveSmallIntegerField(help_text="Status of ticket", choices=STATUS_CHOICES, default=UNTOUCHED)
-    start_datetime = models.DateTimeField(null=True)
-    end_datetime = models.DateTimeField(null=True)
+    start_datetime = models.DateTimeField(null=True, blank=True)
+    end_datetime = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'{self.ticket_id} - {self.pokerboard}'
@@ -126,27 +126,10 @@ class PokerboardUser(util_models.CommonInfo, util_models.SoftDeletionModel):
     )
     pokerboard = models.ForeignKey(Pokerboard, help_text="Pokerboards Associated", on_delete=models.CASCADE)
     role = models.PositiveSmallIntegerField(choices=ROLE, help_text="Role", default=CONTRIBUTOR)
-
+    group = models.ForeignKey(group_models.Group, help_text="Groups Associated", null=True, on_delete=models.CASCADE, blank=True)
+    
     def __str__(self):
         return f'User: {self.user} Role: {self.role} Board: {self.pokerboard}'
-
-
-class PokerboardGroup(util_models.CommonInfo, util_models.SoftDeletionModel):
-    """
-    Through table of pokerboard with group.
-    """
-    SPECTATOR = 1
-    CONTRIBUTOR = 2
-    ROLE = (
-        (SPECTATOR, "Spectator"),
-        (CONTRIBUTOR, "Contributor"),
-    )
-    group = models.ForeignKey(group_models.Group, help_text="Groups Associated", on_delete=models.CASCADE)
-    pokerboard = models.ForeignKey(Pokerboard, help_text="Pokerboards Associated", on_delete=models.CASCADE)
-    role = models.PositiveSmallIntegerField(choices=ROLE, help_text="Role", default=CONTRIBUTOR)
-
-    def __str__(self):
-        return f'Group: {self.group} Role: {self.role} Board: {self.pokerboard}'
 
 
 class ManagerCredentials(util_models.CommonInfo):

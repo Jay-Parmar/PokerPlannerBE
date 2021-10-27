@@ -12,9 +12,15 @@ class GroupViewSet(viewsets.ModelViewSet):
     """
     Group API for creating group and get list of groups a user is associated with.
     """
-    queryset= group_models.Group.objects.all()
     serializer_class = group_serializer.GroupSerializer
     permission_classes = [IsGroupOwnerPermission]
+
+    def get_queryset(self):
+        """
+        Gets groups list in which current user is a member.
+        """
+        return group_models.Group.objects.filter(members=self.request.user)
+
 
     def perform_create(self, serializer):
         """
