@@ -1,13 +1,13 @@
-from rest_framework import generics, viewsets,status
+from rest_framework import generics, viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.group.models import Group
+from apps.group import models as group_models
 from apps.pokerboard import models as pokerboard_models
 from apps.pokerboard import serializer as pokerboard_serializers
-from apps.pokerboard.permissions import CustomPermissions
-from apps.user.models import User
+from apps.pokerboard import permissions as pokerboard_permissions
+from apps.user import models as user_models
 
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
@@ -38,8 +38,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-
-    @action(detail=True, methods=['get','post', 'patch', 'delete'], permission_classes=[IsAuthenticated, CustomPermissions])
+    @action(detail=True, methods=['get','post', 'patch', 'delete'], permission_classes=[IsAuthenticated, pokerboard_permissions.CustomPermissions])
     def invite(self, request, pk=None):
         """
         /pokerboard/108/invite/ - manager - create invite
@@ -66,11 +65,11 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
 
             if 'email' in request.data.keys():
-                user = User.objects.get(email=request.data['email'])
+                user = user_models.User.objects.get(email=request.data['email'])
                 users.append(user)
             elif 'group_id' in request.data.keys():
                 group_id = request.data['group_id']
-                group = Group.objects.get(id=group_id)
+                group = group_models.Group.objects.get(id=group_id)
                 users = group.users.all()
 
         if request.method == 'POST':
@@ -89,8 +88,6 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             invite = pokerboard_models.Invite.objects.get(
                 user=user.id, pokerboard=pokerboard_id)
-            # import pdb
-            # pdb.set_trace()
             if invite.user == None:
                pass
                #TODO: if comes through group
@@ -117,13 +114,18 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
 
 
 class ManagerLoginView(generics.CreateAPIView):
+    """
+    Create a manager entry if the credentials are valid.
+    """
     queryset = pokerboard_models.ManagerCredentials.objects.all()
     serializer_class = pokerboard_serializers.ManagerLoginSerializer
     permission_classes = [IsAuthenticated,]
 
     def perform_create(self, serializer):
-        print("::: self user", self.request.user)
-        serializer.save(user = self.request.user)
+        try:
+            serializer.save(user = self.request.user)
+        except Exception as err:
+            raise serializers.ValidationError("Credentials already present")
 
 
 class PokerboardMembersView(viewsets.ModelViewSet):

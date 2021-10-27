@@ -2,14 +2,17 @@ import requests
 
 from rest_framework import serializers, status
 
-from apps.pokerboard import models as pokerboard_models
-from apps.group.models import Group
-from apps.user.models import User
-from apps.user.serializers import UserSerializer
-from apps.pokerboard import constants
+from apps.group import models as group_models
+from apps.pokerboard import (
+    constants,
+    models as pokerboard_models
+)
+from apps.user import (
+    models as user_models,
+    serializers as user_serializers
+) 
 
 from atlassian import Jira
-
 
 
 class TicketsSerializer(serializers.ListSerializer):
@@ -23,7 +26,7 @@ class TicketSerializer(serializers.ModelSerializer):
 
 
 class PokerBoardSerializer(serializers.ModelSerializer):
-    manager = UserSerializer()
+    manager = user_serializers.UserSerializer()
     ticket = TicketSerializer(source='tickets', many=True)
 
     class Meta:
@@ -33,6 +36,9 @@ class PokerBoardSerializer(serializers.ModelSerializer):
 
 
 class ManagerLoginSerializer(serializers.ModelSerializer):
+    """
+    Serializer to save Manager Credentials in Database.
+    """
     
     class Meta:
         model = pokerboard_models.ManagerCredentials
@@ -41,10 +47,27 @@ class ManagerLoginSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},
         }
 
+    def validate(self, attrs):
+        """
+        Check if jira credentials are correct.
+        """
+        try:
+            jira = Jira(
+                url = attrs.get('url'),
+                username = attrs.get('username'),
+                password = attrs.get('password'),
+            )
+            response = jira.jql("")
+            if not response['total']:
+                raise serializers.ValidationError("No issue tickets Found")
+        except Exception as err:
+            raise serializers.ValidationError("Invalid Credentials")
+        
+        return attrs
+
 
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
-    manager_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all())
+    manager_id = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
     sprint_id = serializers.CharField(required=False, write_only=True)
     tickets = TicketsSerializer(required=False, write_only=True)
     jql = serializers.CharField(required=False, write_only=True)
@@ -83,7 +106,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             if(len(myJql) != 0):
                 myJql += " OR "
             myJql += "issueKey in ("
-            for ticket in tickets:
+            for ticket in tickets: #list appen
                 myJql = myJql + ticket + ','
             myJql = myJql[:-1] + ')'
 
@@ -108,8 +131,8 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                     ticket_response['status_code'] = status.HTTP_200_OK
                 ticket_response['key'] = key
                 ticket_responses.append(ticket_response)
-        except requests.exceptions.RequestException as e:
-            raise serializers.ValidationError("Invalid Query")
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
         return ticket_responses
 
     def create(self, validated_data):
@@ -147,7 +170,7 @@ class InviteSerializer(serializers.ModelSerializer):
 
 class InviteCreateSerializer(serializers.Serializer):
     group_id = serializers.PrimaryKeyRelatedField(
-        queryset=Group.objects.all(), required=False)
+        queryset=group_models.Group.objects.all(), required=False)
     email = serializers.EmailField(required=False)
     user_role = serializers.ChoiceField(
         choices=constants.ROLE_CHOICES, required=False)
@@ -164,9 +187,9 @@ class InviteCreateSerializer(serializers.Serializer):
             
             elif 'email' in attrs.keys():
                 try:
-                    user = User.objects.get(email=attrs['email'])
+                    user = user_models.User.objects.get(email=attrs['email'])
                     users.append(user)
-                except User.DoesNotExist as e:
+                except user_models.User.DoesNotExist as e:
                     # TODO Send mail to user
                     raise serializers.ValidationError(e)
             else:
@@ -215,7 +238,7 @@ class PokerBoardUserGroupSerialzier(serializers.ModelSerializer):
     a particular pokerboard
     """
     class Meta:
-        model = Group
+        model = group_models.Group
         fields = ['id', 'name']
 
 
@@ -223,7 +246,7 @@ class PokerboardUserSerializer(serializers.ModelSerializer):
     """
     Serialier to list members belonging to a pokerboard
     """
-    user = UserSerializer()
+    user = user_serializers.UserSerializer()
     role = serializers.SerializerMethodField()
     group = PokerBoardUserGroupSerialzier()
 

@@ -40,7 +40,7 @@ class ListInvite(viewsets.ModelViewSet):
     """
     queryset = Invite.objects.all()
     serializer_class = InviteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'delete']
     
     def get_queryset(self):
@@ -50,14 +50,14 @@ class ListInvite(viewsets.ModelViewSet):
 class ChangePasswordView(generics.UpdateAPIView):
 
     queryset = user_models.User.objects.all()
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated,)
     serializer_class = user_serializers.ChangePasswordSerializer
 
     def get_object(self):
         return self.request.user
 
 
-class Login(APIView):
+class LoginView(APIView):
     """
     View for Performing Login Verification
     """
@@ -72,13 +72,13 @@ class Login(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class Logout(ObtainAuthToken):
+class LogoutView(APIView):
     """
     Logout method for logging out after session
     """
     permission_classes = (permissions.IsAuthenticated,)
     
-    def get(self, request, format=None):
+    def post(self, request, format=None):
         '''Removes token from user when they log out.'''
         try:
             request.user.auth_token.delete()
@@ -93,4 +93,4 @@ class ActivateAccountView(UpdateAPIView):
     """
     serializer_class = user_serializers.VerifyAccountSerializer
     queryset = user_models.User.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]

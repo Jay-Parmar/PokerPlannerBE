@@ -132,7 +132,10 @@ class PokerboardUser(util_models.CommonInfo, util_models.SoftDeletionModel):
         return f'User: {self.user} Role: {self.role} Board: {self.pokerboard}'
 
 
-class ManagerCredentials(util_models.CommonInfo):
+class ManagerCredentials(util_models.CommonInfo, util_models.SoftDeletionModel):
+    """
+    Manager Credentials of their Jira Account.
+    """
     user = models.OneToOneField(user_models.User, help_text="Manager's details", on_delete=models.CASCADE)
     username = models.EmailField(help_text="Jira Username")
     password = models.CharField(max_length=250, help_text="Jira Password or Token")
