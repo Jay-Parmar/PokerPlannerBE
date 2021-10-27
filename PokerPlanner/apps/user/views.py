@@ -1,28 +1,21 @@
-from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.http import JsonResponse
 
-from rest_framework import generics, permissions, request, serializers, status, viewsets
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.generics import UpdateAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import action
 
-from apps.pokerboard import views
+from apps.pokerboard import models as pokerboard_models
+from apps.pokerboard import serializer as pokerboard_serializers
+from apps.user import models as user_models
+from apps.user import serializers as user_serializers
+from apps.user import tasks as user_tasks
 
-from apps.user import (
-    serializers as user_serializers,
-    models as user_models
-)
-from .tasks import send_email_task
-from apps.pokerboard.models import Invite
-from apps.pokerboard.serializer import InviteSerializer
-
-from django.http import JsonResponse
 
 class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView):
     """
@@ -38,28 +31,12 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         # verification_token = PasswordResetTokenGenerator().make_token(user)
-        # send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
+        # user_tasks.send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
     
     def get_object(self):
         return self.request.user
 
-
-class InviteViewset(viewsets.ModelViewSet):
-    """
-    List Invite and Delete Invite of users invite
-    """
-    queryset = Invite.objects.all()
-    serializer_class = InviteSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'delete']
-    
-    def get_queryset(self):
-        return Invite.objects.filter(user_id=self.request.user.id, status=0)
-    
-    def perform_destroy(self, instance):
-        instance.status = 2
-        instance.save()
     
 
 class ChangePasswordView(generics.UpdateAPIView):

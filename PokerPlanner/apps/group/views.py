@@ -2,9 +2,10 @@ from rest_framework import status, viewsets
 from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework.response import Response
 
-from apps.group import (models as group_models,
-serializers as group_serializer)
+from apps.group import models as group_models
+from apps.group import serializers as group_serializer
 from apps.user import models as user_models
+
 from .permissions import IsGroupOwnerPermission
 
 

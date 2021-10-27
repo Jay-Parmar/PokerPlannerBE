@@ -1,13 +1,12 @@
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from django.urls import path, include
-
-from apps.pokerboard.views import ManagerLoginView, PokerBoardViewSet
+from apps.pokerboard import views as pokerboard_views
 
 router = DefaultRouter()
-router.register('', PokerBoardViewSet)
+router.register('', pokerboard_views.PokerBoardViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),
-    path('manager', ManagerLoginView.as_view()),
+    path('manager', pokerboard_views.ManagerLoginView.as_view()),
 ]
