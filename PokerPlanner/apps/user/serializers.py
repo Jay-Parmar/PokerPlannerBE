@@ -20,21 +20,27 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
 
-class LoginSerializer(serializers.Serializer):
+class LoginSerializer(UserSerializer):
     """
     Use Serializer for performing Login operations
     """
     email = serializers.EmailField()
-    password = serializers.CharField(max_length=128, write_only=True)
-    first_name = serializers.CharField(max_length=128, read_only=True)
-    last_name = serializers.CharField(max_length=128, read_only=True)
     token = serializers.SerializerMethodField()
     
-    class Meta:
+    class Meta(UserSerializer.Meta):
         model = user_models.User
-        fields = ['id', 'email', 'password', 'first_name', 'last_name', 'token']
+        fields = UserSerializer.Meta.fields + ['token', 'is_verified']
+        extra_kwargs = {
+            'first_name': {'read_only': True},
+            'last_name': {'read_only': True},
+            'password': {'write_only': True},
+            'is_verified': {'read_only': True},
+        }
 
     def get_token(self, instance):
+        """
+        Generate token on user login.
+        """
         user = user_models.User.objects.get(email=instance['email'])
         token, _ = Token.objects.get_or_create(user=user)
         return token.key
@@ -55,6 +61,8 @@ class LoginSerializer(serializers.Serializer):
 
         data['first_name'] = user.first_name
         data['last_name'] = user.last_name
+        data['id'] = user.id
+        data['is_verified'] = user.is_verified
         return data
 
 

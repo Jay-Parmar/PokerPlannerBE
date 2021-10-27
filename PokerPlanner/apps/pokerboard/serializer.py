@@ -1,3 +1,5 @@
+import requests
+
 from rest_framework import serializers, status
 
 from apps.pokerboard import models as pokerboard_models
@@ -8,7 +10,6 @@ from apps.pokerboard import constants
 
 from atlassian import Jira
 
-import requests
 
 
 class TicketsSerializer(serializers.ListSerializer):
@@ -232,3 +233,47 @@ class PokerboardUserSerializer(serializers.ModelSerializer):
     
     def get_role(self, obj):
         return obj.get_role_display()
+
+
+class PokerboardTicketSerializer(serializers.ModelSerializer):
+    """
+    PokerBoard tickets Serializer for updating and listing pokerboard tickets.
+    """
+    pokerboard = PokerBoardSerializer()
+    class Meta:
+        model = pokerboard_models.Ticket
+        fields = ['id', 'pokerboard', 'ticket_id', 'estimate', 'order', 'status']
+        # TODO: add a methodfield here so that while fetching an  entity from ticket table
+        # ticket details come in that request too. and on updatinf final estimate it should be
+        #updated on JIRA as well
+
+
+class CommentSerializer(serializers.Serializer):
+    """
+    Comment Serializer to comment on a ticket 
+    """
+    comment = serializers.CharField()
+    ticket_id = serializers.SlugField()
+
+
+class VoteSerializer(serializers.ModelSerializer):
+    """
+    Vote Serializer for creating and listing votes.
+    """
+    class Meta:
+        model = pokerboard_models.UserTicketEstimate
+        fields = ["estimate", "ticket_id", "user", "estimation_time"]
+    
+    def create(self, validated_data):
+        """
+        Create or update a vote
+        """
+        vote, created = pokerboard_models.UserTicketEstimate.objects.update_or_create(
+            estimate=validated_data['estimate'],
+            ticket_id=validated_data['ticket_id'],
+            user=validated_data['user'],
+            estimation_time=validated_data['estimation_time'],
+            defaults={
+                'estimate':validated_data['estimate']
+            }
+        )

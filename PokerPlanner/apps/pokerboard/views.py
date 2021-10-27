@@ -143,3 +143,27 @@ class PokerboardMembersView(viewsets.ModelViewSet):
         return Response(members.data)
     
         
+class VoteViewSet(viewsets.ModelViewSet):
+    """
+    PokerBoard Vote view for CRUD operation
+    """
+    queryset = pokerboard_models.UserTicketEstimate.objects.all()
+    serializer_class = pokerboard_serializers.VoteSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class TicketViewSet(viewsets.ModelViewSet):
+    """
+    Ticket view to get/update/delete ticket
+    """
+    queryset = pokerboard_models.Ticket.objects.all()
+    serializer_class = pokerboard_serializers.PokerboardTicketSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class CommentView(generics.CreateAPIView, generics.ListAPIView):
+    """
+    Comment View to comment on a JIRA ticket
+    """
+    serializer_class = pokerboard_serializers.CommentSerializer
+    permission_classes = [IsAuthenticated]

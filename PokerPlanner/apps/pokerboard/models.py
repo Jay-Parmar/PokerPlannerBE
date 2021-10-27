@@ -87,8 +87,8 @@ class Ticket(util_models.CommonInfo, util_models.SoftDeletionModel):
     estimate = models.PositiveIntegerField(null=True, help_text="Final estimate of ticket")
     order = models.PositiveIntegerField(help_text="Order of displaying of tickets")
     status = models.PositiveSmallIntegerField(help_text="Status of ticket", choices=STATUS_CHOICES, default=UNTOUCHED)
-    start_datetime = models.DateTimeField(null=True)
-    end_datetime = models.DateTimeField(null=True)
+    start_datetime = models.DateTimeField(null=True, blank=True)
+    end_datetime = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'{self.ticket_id} - {self.pokerboard}'
