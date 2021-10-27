@@ -1,32 +1,26 @@
-from rest_framework import generics, viewsets,status
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import serializers
+from rest_framework import generics, viewsets, status, serializers
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from atlassian import Jira
-
-from apps.group.models import Group
-from apps.pokerboard.models import Pokerboard, Invite, ManagerCredentials
-from apps.pokerboard.serializer import (
-    PokerBoardCreationSerializer, PokerBoardSerializer, InviteCreateSerializer,
-    InviteSerializer, PokerboardUserSerializer, ManagerLoginSerializer
-)
-from apps.pokerboard.permissions import CustomPermissions
-from apps.user.models import User
+from apps.group import models as group_models
+from apps.pokerboard import models as pokerboard_models
+from apps.pokerboard import serializer as pokerboard_serializers
+from apps.pokerboard import permissions as pokerboard_permissions
+from apps.user import models as user_models
 
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
     """
     Pokerboard View for CRUD operations
     """
-    queryset = Pokerboard.objects.all()
+    queryset = pokerboard_models.Pokerboard.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
-            return PokerBoardCreationSerializer
-        return PokerBoardSerializer
+            return pokerboard_serializers.PokerBoardCreationSerializer
+        return pokerboard_serializers.PokerBoardSerializer
     
     def create(self, request, *args, **kwargs):
         """
@@ -41,7 +35,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    @action(detail=True, methods=['get','post', 'patch', 'delete'], permission_classes=[IsAuthenticated, CustomPermissions])
+    @action(detail=True, methods=['get','post', 'patch', 'delete'], permission_classes=[IsAuthenticated, pokerboard_permissions.CustomPermissions])
     def invite(self, request, pk=None):
         """
         /pokerboard/108/invite/ - manager - create invite
@@ -63,22 +57,22 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
             users = []
             group_id = None
 
-            serializer = InviteCreateSerializer(
+            serializer = pokerboard_serializers.InviteCreateSerializer(
                 data=request.data, context=context)
             serializer.is_valid(raise_exception=True)
 
             if 'email' in request.data.keys():
-                user = User.objects.get(email=request.data['email'])
+                user = user_models.User.objects.get(email=request.data['email'])
                 users.append(user)
             elif 'group_id' in request.data.keys():
                 group_id = request.data['group_id']
-                group = Group.objects.get(id=group_id)
+                group = group_models.Group.objects.get(id=group_id)
                 users = group.users.all()
 
         if request.method == 'POST':
             # TODO : Send mail for signup if doesnt exist
             for user in users:
-                serializer = InviteSerializer(
+                serializer = pokerboard_serializers.InviteSerializer(
                     data={**request.data, 'pokerboard': pokerboard_id, 'user': user.id, 'group': group_id})
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
@@ -86,13 +80,11 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
 
         if request.method == 'PATCH':
             user = request.user
-            serializer = InviteCreateSerializer(
+            serializer = pokerboard_serializers.InviteCreateSerializer(
                 data=request.data, context={**context, 'user': user})
             serializer.is_valid(raise_exception=True)
-            invite = Invite.objects.get(
+            invite = pokerboard_models.Invite.objects.get(
                 user=user.id, pokerboard=pokerboard_id)
-            # import pdb
-            # pdb.set_trace()
             if invite.user == None:
                pass
                #TODO: if comes through group
@@ -101,7 +93,7 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
                     "user": user.id,
                     "pokerboard": pokerboard_id
                 }
-                serializer = PokerboardUserSerializer(
+                serializer = pokerboard_serializers.PokerboardUserSerializer(
                     data=user_data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
@@ -112,35 +104,22 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
 
         if request.method == 'DELETE':
             for user in users:
-                invite = Invite.objects.get(
+                invite = pokerboard_models.Invite.objects.get(
                     user_id=user.id, pokerboard_id=pokerboard_id)
                 invite.delete()
             return Response(data={'msg': 'Invite successfully revoked.'})
 
 
 class ManagerLoginView(generics.CreateAPIView):
-    queryset = ManagerCredentials.objects.all()
-    serializer_class = ManagerLoginSerializer
+    """
+    Create a manager entry if the credentials are valid.
+    """
+    queryset = pokerboard_models.ManagerCredentials.objects.all()
+    serializer_class = pokerboard_serializers.ManagerLoginSerializer
     permission_classes = [IsAuthenticated,]
 
     def perform_create(self, serializer):
-        print("::: self user", self.request.user)
-        serializer.save(user = self.request.user)
-
-    def create(self, request, *args, **kwargs):
         try:
-            jira = Jira(
-                url = request.data['url'],
-                username = request.data['username'],
-                password = request.data['password'],
-            )
-            response = jira.jql("")
-            if not response['total']:
-                raise serializers.ValidationError("No issue tickets Found")
+            serializer.save(user = self.request.user)
         except Exception as err:
-            raise serializers.ValidationError("Invalid Credentials")
-
-        try:
-            return super().create(request, *args, **kwargs)
-        except Exception as err:
-            return Response({'message': 'Credentials already present'}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError("Credentials already present")

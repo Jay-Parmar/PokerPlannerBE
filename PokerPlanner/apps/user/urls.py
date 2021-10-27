@@ -9,8 +9,8 @@ router.register('', user_views.ListInvite)
 urlpatterns = [
     path('',user_views.UserViewSet.as_view()),
     path('invite/',include(router.urls)),
-    path('login/', user_views.Login.as_view(), name="login"),
-    path('logout/', user_views.Logout.as_view(), name="logout"),
+    path('login/', user_views.LoginView.as_view(), name="login"),
+    path('logout/', user_views.LogoutView.as_view(), name="logout"),
     path('changepassword/', user_views.ChangePasswordView.as_view()),
     path('activate/<slug:pk>', user_views.ActivateAccountView.as_view(), name='activate'),
 
