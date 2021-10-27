@@ -116,8 +116,14 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         new_pokerboard = {key: val for key, val in self.data.items() if key not in [
             'sprint_id', 'tickets']}
         ticket_responses = new_pokerboard.pop('ticket_responses')
-        if len(ticket_responses) == 0:
-            raise serializers.ValidationError("Invalid Sprint!")
+        valid_tickets = 0
+        for ticket_response in ticket_responses:
+            valid_tickets += ticket_response['status_code'] == 200
+
+        if valid_tickets == 0:
+            raise serializers.ValidationError('Invalid tickets!')
+        manager = user_models.User.objects.get(id=new_pokerboard["manager"]) 
+        new_pokerboard["manager"] = manager
         pokerboard = pokerboard_models.Pokerboard.objects.create(**new_pokerboard)
         for ticket_response in ticket_responses:
             if ticket_response['status_code'] != 200:

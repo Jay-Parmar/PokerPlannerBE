@@ -8,5 +8,6 @@ router = DefaultRouter()
 router.register('', views.InviteViewSet)
 
 urlpatterns = [
-    path("", include(router.urls))
+    path("managerinvites/", views.ManagerListInviteView.as_view()),
+    path("", include(router.urls)),
 ]

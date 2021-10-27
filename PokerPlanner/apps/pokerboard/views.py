@@ -31,8 +31,9 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         Required : Token in header, Title, Description
         Optional : Estimate_type
         """
-        request.data['manager_id'] = request.user.id
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(
+            data={**request.data, 'manager_id': request.user.id}
+        )
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)

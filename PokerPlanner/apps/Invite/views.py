@@ -1,7 +1,10 @@
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.pokerboard import models as pokerboard_models
 from apps.Invite import serializers as Invite_serializers
@@ -54,3 +57,17 @@ class InviteViewSet(viewsets.ModelViewSet):
             return Response(data={'msg' : 'Already accepted'},status=status.HTTP_400_BAD_REQUEST)
         instance.status = constants.DECLINED
         instance.save()
+
+
+class ManagerListInviteView(ListAPIView):
+    """
+    View for retrieving all invites sent by manager to uers
+    """
+    serializer_class = Invite_serializers.InviteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        inivites = pokerboard_models.Invite.objects.filter(pokerboard=request.data['pokerboard'])
+        serializer = self.get_serializer(inivites, many=True)
+        return Response(serializer.data)
+    
