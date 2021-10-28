@@ -11,4 +11,5 @@ urlpatterns = [
     path('logout/', user_views.LogoutView.as_view(), name="logout"),
     path('changepassword/', user_views.ChangePasswordView.as_view()),
     path('activate/<slug:pk>', user_views.ActivateAccountView.as_view(), name='activate'),
+    path('resend', user_views.ResendEmailView.as_view(), name='resend')
 ] 

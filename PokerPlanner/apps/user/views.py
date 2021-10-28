@@ -1,5 +1,5 @@
 from rest_framework import generics, permissions, status
-from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import CreateAPIView, UpdateAPIView
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -77,3 +77,20 @@ class ActivateAccountView(UpdateAPIView):
     serializer_class = user_serializers.VerifyAccountSerializer
     queryset = user_models.User.objects.all()
     permission_classes = [permissions.AllowAny]
+
+
+class ResendEmailView(CreateAPIView):
+    """
+    Generates a new verification token and send's it to user
+    """
+    serializer_class = user_serializers.ResendEmailSerializer
+
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_id = serializer.data['user']
+        user = user_models.User.objects.get(id=user_id)
+        verification_token = account_activation_token.make_token(user)
+        send_email_task.delay(user.first_name, user.pk, verification_token, user.email)
+        return Response({"message" : "Verification Email has been sent to you"}, status=status.HTTP_200_OK)
+
