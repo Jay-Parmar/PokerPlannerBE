@@ -1,17 +1,13 @@
 from django.conf import settings
-from django.contrib.auth.models import (
-    BaseUserManager, AbstractBaseUser, PermissionsMixin
-)
+from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
+                                        PermissionsMixin)
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
 from rest_framework.authtoken.models import Token
 
-from libs import (
-    models as util_models,
-    managers as util_managers,
-)
+from libs import managers as util_managers
+from libs import models as util_models
 
 
 class UserManager(BaseUserManager, util_managers.SoftDeletionManager):

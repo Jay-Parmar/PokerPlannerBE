@@ -1,6 +1,7 @@
 import os
-from decouple import config
+
 from atlassian import Jira
+from decouple import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
     'apps.group',
     'apps.pokerboard',
     'corsheaders',
+    'apps.Invite',
 ]
 
 MIDDLEWARE = [
@@ -142,6 +144,7 @@ JIRA = Jira(
     username = config('JIRA_USERNAME'),
     password = config('JIRA_PASSWORD'),
     )
+
 #Email configuration 
 EMAIL_USE_TLS = True
 EMAIL_HOST = config('EMAIL_HOST')

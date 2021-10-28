@@ -7,7 +7,6 @@ from apps.group import models as group_models
 from apps.user import models as user_models
 from libs import models as util_models
 
-from libs import models as util_models
 
 class Pokerboard(util_models.CommonInfo, util_models.SoftDeletionModel):
     """
@@ -48,10 +47,18 @@ class Invite(util_models.CommonInfo):
     """
     Invites gone to user or group via pokerboard.
     """
+    PENDING = 0
+    ACCEPTED = 1
+    DECLINED = 2
+    STATUS_CHOICES = (
+        (ACCEPTED,'Accepted'),
+        (PENDING,'Pending'),
+        (DECLINED,'Declined')
+    )
     email = models.EmailField(help_text="Non existing user email", null=True, blank=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, help_text="Person invited", related_name="invites", 
-        on_delete=models.CASCADE, null=True, blank=True
+        on_delete=models.CASCADE
     )
     group = models.ForeignKey(
         group_models.Group, help_text="Group Invited", on_delete=models.CASCADE, null=True, blank=True
@@ -59,7 +66,9 @@ class Invite(util_models.CommonInfo):
     pokerboard = models.ForeignKey(
         Pokerboard, help_text="Pokerboard", related_name="invites", on_delete=models.CASCADE
     )
-    is_accepted = models.BooleanField(default=False, help_text="Indicates if invitation accepted or not")
+    status = models.PositiveSmallIntegerField(
+        help_text="Indicates if invitation accepted or not",choices=STATUS_CHOICES, default=PENDING
+    )
 
     def __str__(self):
         return f'Pokerboard: {self.pokerboard} - Group: {self.group} - User: {self.user}'

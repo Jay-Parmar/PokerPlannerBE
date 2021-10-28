@@ -1,14 +1,10 @@
-from rest_framework import generics, permissions, status, viewsets
-from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework import generics, permissions, status
 from rest_framework.generics import UpdateAPIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.user import (serializers as user_serializers, models as user_models)
-from apps.pokerboard.models import Invite
-from apps.pokerboard.serializer import InviteSerializer
 from .tasks import send_email_task
 from .verificationToken import account_activation_token
 
@@ -33,19 +29,6 @@ class UserViewSet(generics.RetrieveUpdateDestroyAPIView, generics.CreateAPIView)
     def get_object(self):
         return self.request.user
 
-
-class ListInvite(viewsets.ModelViewSet):
-    """
-    List Invite to list a users invite
-    """
-    queryset = Invite.objects.all()
-    serializer_class = InviteSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'delete']
-    
-    def get_queryset(self):
-        return Invite.objects.filter(user_id=self.request.user.id, is_accepted=False)
-    
 
 class ChangePasswordView(generics.UpdateAPIView):
 
