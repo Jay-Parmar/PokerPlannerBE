@@ -151,7 +151,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                 ticket_responses.append(ticket_response)
         except Exception as e:
             if str(e).startswith("400 Client Error"):
-                raise serializers.ValidationError("Bad request, query not found!")
+                raise serializers.ValidationError("Invalid Query")
             raise serializers.ValidationError(str(e))
         return ticket_responses
 
