@@ -67,7 +67,8 @@ class ManagerListInviteView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
-        inivites = pokerboard_models.Invite.objects.filter(pokerboard=request.data['pokerboard'])
+        pokerboard_id = request.query_params.get('pokerboard')
+        inivites = pokerboard_models.Invite.objects.filter(pokerboard=pokerboard_id)
         serializer = self.get_serializer(inivites, many=True)
         return Response(serializer.data)
     

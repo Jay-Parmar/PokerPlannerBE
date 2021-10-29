@@ -197,19 +197,9 @@ class PokerBoardUserGroupSerialzier(serializers.ModelSerializer):
 
 
 class PokerboardUserSerializer(serializers.ModelSerializer):
-    """
-    Serialier to list members belonging to a pokerboard
-    """
-    user = user_serializers.UserSerializer()
-    role = serializers.SerializerMethodField()
-    group = PokerBoardUserGroupSerialzier()
-
     class Meta:
         model = pokerboard_models.PokerboardUser
-        fields = ['id', 'user', 'role', 'pokerboard', 'group']
-    
-    def get_role(self, obj):
-        return obj.get_role_display()
+        fields = ['user', 'role', 'pokerboard']
 
 
 class PokerboardTicketSerializer(serializers.ModelSerializer):
@@ -254,3 +244,18 @@ class VoteSerializer(serializers.ModelSerializer):
                 'estimate':validated_data['estimate']
             }
         )
+
+class PokerboardMemberSerializer(serializers.ModelSerializer):
+    """
+    Serialier to list members belonging to a pokerboard
+    """
+    user = user_serializers.UserSerializer()
+    role = serializers.SerializerMethodField()
+    group = PokerBoardUserGroupSerialzier()
+
+    class Meta:
+        model = pokerboard_models.PokerboardUser
+        fields = ['id', 'user', 'role', 'pokerboard', 'group']
+    
+    def get_role(self, obj):
+        return obj.get_role_display()
