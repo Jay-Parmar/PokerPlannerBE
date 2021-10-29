@@ -1,3 +1,4 @@
+from django.urls.conf import path
 from rest_framework import generics, viewsets, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -36,19 +37,61 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ManagerLoginView(generics.CreateAPIView):
+class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
     """
     Create a manager entry if the credentials are valid.
     """
     queryset = pokerboard_models.ManagerCredentials.objects.all()
-    serializer_class = pokerboard_serializers.ManagerLoginSerializer
     permission_classes = [IsAuthenticated,]
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return pokerboard_serializers.ManagerLoginSerializer
+        return pokerboard_serializers.ManagerDetailSerializer
+
+    def get_queryset(self):
+        if self.request.method == 'POST':
+            return pokerboard_models.ManagerCredentials.objects.all()
+        return pokerboard_models.ManagerCredentials.objects.filter(user=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        instance = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
+        print("instance:::", instance.data)
+        serializer = self.get_serializer(instance)
+        print("Seria:::", serializer)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    # def patch(self, request):
+    #     print(":::req", request)
+    #     testmodel_object = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
+    #     serializer = pokerboard_serializers.ManagerDetailSerializer(testmodel_object, 
+    #                  data=request.data, partial=True)
+    #     serializer.is_valid(raise_exception=True)
+    #     serializer.save()
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # user_data = {
+        #     "password": request.password,
+        #     "url": instance.url,
+        #     "username": instance.username,
+        # }
+        # serializer = pokerboard_serializers.ManagerDetailSerializer(data=user_data)
+        # serializer.is_valid(raise_exception=True)
+        # serializer.save()
+        instance.password = request.password
+        instance.save()
+        return Response(data={"message": "successfully updated"}, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         try:
             serializer.save(user = self.request.user)
         except Exception as err:
-            raise serializers.ValidationError("Credentials already present")
+            return Response(data={'msg': 'User already present'}, status=status.HTTP_200_OK)
+            # return self.partial_update(self.request)
 
 
 class PokerboardMembersView(viewsets.ModelViewSet):
