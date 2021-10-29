@@ -111,3 +111,22 @@ class VerifyAccountSerializer(serializers.Serializer):
         user.is_verified = True
         user.save()
         return user
+
+
+class ResendEmailSerializer(serializers.Serializer):
+    """
+    Serializer to resend user verification email
+    """
+    user = serializers.SlugField()
+
+    def validate(self, data):
+        """
+        Checks if user with given user id exists and if user is already verified
+        """
+        user_id = data["user"]
+        user = user_models.User.objects.filter(id=user_id)
+        if not user.exists():
+            raise serializers.ValidationError("User not Found")
+        if(user[0].is_verified):
+            raise serializers.ValidationError("User is Already Verified")
+        return data
