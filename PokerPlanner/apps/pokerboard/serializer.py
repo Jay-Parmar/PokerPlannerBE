@@ -67,6 +67,21 @@ class ManagerLoginSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class ManagerDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer to save Manager Credentials in Database.
+    """
+    
+    class Meta:
+        model = pokerboard_models.ManagerCredentials
+        fields = ['url', 'username', 'password']
+        extra_kwargs = {
+            'password': {'read_only': True},
+            'url': {'read_only': True},
+            'username': {'read_only': True},
+        }
+
+
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
     manager_id = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
     sprint_id = serializers.CharField(required=False, write_only=True)
@@ -118,9 +133,9 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             myJql += data['jql']
 
         jql = myJql
+        if(len(jql)==0):
+            raise serializers.ValidationError("Invalid Query")
         try:
-            if(len(jql)==0):
-                raise serializers.ValidationError("Invalid Query")
             issues = jira.jql(jql)['issues']    
             for issue in issues:
                 ticket_response = {}
@@ -135,6 +150,8 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                 ticket_response['key'] = key
                 ticket_responses.append(ticket_response)
         except Exception as e:
+            if str(e).startswith("400 Client Error"):
+                raise serializers.ValidationError("Bad request, query not found!")
             raise serializers.ValidationError(str(e))
         return ticket_responses
 
@@ -149,7 +166,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
 
         if valid_tickets == 0:
             raise serializers.ValidationError('Invalid tickets!')
-        manager = user_models.User.objects.get(id=new_pokerboard["manager"]) 
+        manager = user_models.User.objects.get(id=new_pokerboard["manager_id"]) 
         new_pokerboard["manager"] = manager
         pokerboard = pokerboard_models.Pokerboard.objects.create(**new_pokerboard)
         for ticket_response in ticket_responses:
