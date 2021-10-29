@@ -56,7 +56,7 @@ class PokerboardMembersView(viewsets.ModelViewSet):
     Pokerboard member API View for listing and removing user/groups
     """
     queryset = pokerboard_models.PokerboardUser.objects.all()
-    serializer_class = pokerboard_serializers.PokerboardUserSerializer
+    serializer_class = pokerboard_serializers.PokerboardMemberSerializer
     permission_classes = [IsAuthenticated,]
 
     def retrieve(self, request, pk = None):
