@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from rest_framework import generics, viewsets, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -22,11 +23,6 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
         return pokerboard_models.Pokerboard.objects.filter(manager=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        """
-        Create new pokerboard
-        Required : Token in header, Title, Description
-        Optional : Estimate_type
-        """
         serializer = self.get_serializer(
             data={**request.data, 'manager_id': request.user.id}
         )
@@ -49,6 +45,42 @@ class ManagerLoginView(generics.CreateAPIView):
             serializer.save(user = self.request.user)
         except Exception as err:
             raise serializers.ValidationError("Credentials already present")
+
+
+class ManagerUpdateCredentialsView(generics.UpdateAPIView):
+    """
+    Create a manager entry if the credentials are valid.
+    """
+    queryset = pokerboard_models.ManagerCredentials.objects.all()
+    serializer_class = pokerboard_serializers.ManagerLoginSerializer
+    permission_classes = [IsAuthenticated,]
+
+    def partial_update(self, serializer):
+        try:
+            credentials = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user.id)
+            credentials.url = self.request.data['url']
+            credentials.username = self.request.data['username']
+            credentials.password = self.request.data['password']
+            credentials.save()
+        except ObjectDoesNotExist:
+            raise ValidationError("No such user found")
+        return Response("update successfull")
+
+class ManagerListCredentialView(generics.ListAPIView):
+    """
+    View for retrieving all invites sent by manager to uers
+    """
+    serializer_class = pokerboard_serializers.ManagerCredentialSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('user_id')
+        credentials = pokerboard_models.ManagerCredentials.objects.filter(user=user_id)
+        if credentials.first():
+            serializer = self.get_serializer(credentials, many=True)
+            return Response(serializer.data)
+        else:
+            return Response("No such Credentials found", status=status.HTTP_400_BAD_REQUEST)
 
 
 class PokerboardMembersView(viewsets.ModelViewSet):

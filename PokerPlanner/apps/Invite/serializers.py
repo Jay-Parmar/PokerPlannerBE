@@ -16,9 +16,10 @@ class InviteSerializer(serializers.ModelSerializer):
         }
 
     def to_representation(self, instance):
-        representation = super(InviteSerializer, self).to_representation(instance)
-        representation['pokerboard_title'] = instance.pokerboard.title
-        return representation
+        my_response = super(InviteSerializer, self).to_representation(instance)
+        my_response['pokerboard_title'] = instance.pokerboard.title
+        my_response['pokerboard_manager'] = instance.pokerboard.manager.email
+        return my_response
     
     def validate(self, attrs):
         invite = attrs['invite_id']
@@ -30,13 +31,12 @@ class InviteSerializer(serializers.ModelSerializer):
      
 
 class InviteCreateSerializer(serializers.Serializer):
-    pokerboard = serializers.PrimaryKeyRelatedField(
-        queryset=pokerboard_models.Pokerboard.objects.all())
-    group_id = serializers.PrimaryKeyRelatedField(
-        queryset=group_models.Group.objects.all(), required=False)
     email = serializers.EmailField(required=False)
-    user_role = serializers.ChoiceField(
-        choices=constants.ROLE_CHOICES, required=False)
+    group_id = serializers.PrimaryKeyRelatedField(
+        queryset=group_models.Group.objects.all(), required=False
+    )
+    pokerboard = serializers.PrimaryKeyRelatedField(queryset=pokerboard_models.Pokerboard.objects.all())
+    user_role = serializers.ChoiceField(choices=constants.ROLE_CHOICES, required=False)
     
     def create(self, attrs):
         pokerboard = attrs['pokerboard']
@@ -53,25 +53,25 @@ class InviteCreateSerializer(serializers.Serializer):
                 user_tasks.send_invite_task.delay(attrs['email'])
                 raise serializers.ValidationError("Email to signup in pokerplanner has been sent.Please check your email.")
         else:
-            raise serializers.ValidationError('Provide group_id/email!')
+            raise serializers.ValidationError('Group id or Email id is missing')
 
+        #skip for group
         if 'email' in attrs.keys():
             for user in users:
-                invite = pokerboard_models.Invite.objects.filter(
+                user_invite = pokerboard_models.Invite.objects.filter(
                     user=user.id, pokerboard=pokerboard.id
                 )
+                if user_invite.exists():
+                    if user_invite.first().status == constants.ACCEPTED:
+                        raise serializers.ValidationError('Already part of pokerboard')
+                    elif user_invite.first().status == constants.PENDING:
+                        raise serializers.ValidationError('Invite already sent!')
                 if pokerboard.manager == user:
                     raise serializers.ValidationError('Manager cannot be invited!')
-                if invite.exists():
-                    if invite[0].status == constants.ACCEPTED:
-                        raise serializers.ValidationError('Already part of pokerboard')
-                    elif invite[0].status == constants.PENDING:
-                        raise serializers.ValidationError('Invite already sent!')
 
         existing_players = []
         invited_players = []
         for user in users:
-            # invite = Invite.objects.update_or_create( pokerboard_id = pokerboard.id, user_id = user.id, defaults={'status' : constants.PENDING,'user_role' : role})
             poke_user = pokerboard_models.PokerboardUser.objects.filter(user=user.id,pokerboard=pokerboard.id)
             if not poke_user.exists() and pokerboard.manager != user:
                 try:
@@ -81,16 +81,16 @@ class InviteCreateSerializer(serializers.Serializer):
                         invite.user_role = attrs['user_role']
                     invite.save()
                 except pokerboard_models.Invite.DoesNotExist:
-                    new_data = {
+                    invite_data = {
                         'pokerboard_id' : pokerboard.id,
                         'user_id' : user.id,
                         'email': user.email
                     }
                     if 'user_role' in attrs.keys():
-                        new_data['user_role'] = attrs['user_role']
+                        invite_data['user_role'] = attrs['user_role']
                     if 'group_id' in attrs.keys():
-                        new_data['group'] = attrs['group_id']
-                    invite = pokerboard_models.Invite.objects.create(**new_data)
+                        invite_data['group'] = attrs['group_id']
+                    invite = pokerboard_models.Invite.objects.create(**invite_data)
                 invited_players.append(user.email)
             else:
                 existing_players.append(user.email)

@@ -36,6 +36,15 @@ class PokerBoardSerializer(serializers.ModelSerializer):
                   'estimate_type', 'ticket']
 
 
+class ManagerCredentialSerializer(serializers.ModelSerializer):
+    """
+    Serializer to get Manager Credentials in Database.
+    """
+    class Meta:
+        model = pokerboard_models.ManagerCredentials
+        fields = '__all__'
+
+
 class ManagerLoginSerializer(serializers.ModelSerializer):
     """
     Serializer to save Manager Credentials in Database.
@@ -94,11 +103,9 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         i = 0
         myJql = ""
 
-        # If sprint, then fetch all tickets in sprint and add
         if 'sprint_id' in data:
             myJql = "Sprint = " + data['sprint_id']
 
-        # Adding tickets
         if 'tickets' in data.keys():
             tickets = data['tickets']
             serializer = GetTicketsSerializer(data=tickets)
@@ -107,11 +114,10 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             if(len(myJql) != 0):
                 myJql += " OR "
             myJql += "issueKey in ("
-            for ticket in tickets: #list appen
+            for ticket in tickets: 
                 myJql = myJql + ticket + ','
             myJql = myJql[:-1] + ')'
 
-        # Adding jql
         if 'jql' in data.keys():
             if(len(myJql) != 0):
                 myJql += " OR "
