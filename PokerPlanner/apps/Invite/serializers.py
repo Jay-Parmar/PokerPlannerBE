@@ -94,4 +94,4 @@ class InviteCreateSerializer(serializers.Serializer):
                 invited_players.append(user.email)
             else:
                 existing_players.append(user.email)
-        return invite
+        return attrs

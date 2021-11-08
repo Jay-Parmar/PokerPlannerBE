@@ -69,4 +69,4 @@ class InviteViewSet(viewsets.ModelViewSet):
         invite.status = constants.ACCEPTED
         invite.save()
         serializer = Invite_serializers.InviteSerializer(instance=invite)
-        return Response(data={'Added to the pokerboard'})
+        return Response(data=['Added to the pokerboard'])

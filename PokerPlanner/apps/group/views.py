@@ -1,3 +1,4 @@
+from django.db.models.query_utils import Q
 from rest_framework import status, viewsets
 from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework.response import Response
@@ -6,7 +7,7 @@ from apps.group import models as group_models
 from apps.group import serializers as group_serializer
 from apps.user import models as user_models
 
-from .permissions import IsGroupOwnerPermission
+from apps.group.permissions import IsGroupOwnerPermission, IsGroupOwnerOrMember
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -16,11 +17,20 @@ class GroupViewSet(viewsets.ModelViewSet):
     serializer_class = group_serializer.GroupSerializer
     permission_classes = [IsGroupOwnerPermission]
 
+
+    def get_permissions(self):
+        print(self.action)
+        if self.action == 'retrieve':
+            self.permission_classes = [IsGroupOwnerOrMember]
+        else:
+            self.permission_classes = [IsGroupOwnerPermission]
+        return super().get_permissions()
+    
     def get_queryset(self):
         """
         Gets groups list in which current user is a member.
         """
-        return group_models.Group.objects.filter(members=self.request.user)
+        return group_models.Group.objects.filter(Q(members=self.request.user) | Q(owner=self.request.user)).distinct()
 
 
     def perform_create(self, serializer):

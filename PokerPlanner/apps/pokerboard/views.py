@@ -1,4 +1,7 @@
+from django.contrib.postgres import fields
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db.models.query_utils import Q
+from django.http import request
 from rest_framework import generics, viewsets, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,28 +14,25 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
     """
     Pokerboard View for CRUD operations
     """
-    queryset = pokerboard_models.Pokerboard.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.action == 'create':
             return pokerboard_serializers.PokerBoardCreationSerializer
         return pokerboard_serializers.PokerBoardSerializer
     
     def get_queryset(self):
-        return pokerboard_models.Pokerboard.objects.filter(manager=self.request.user)
+        user = pokerboard_models.Pokerboard.objects.filter(Q(manager=self.request.user) |
+                             Q(invites__user=self.request.user, invites__status=1)).distinct()
+        return user
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(
-            data={**request.data, 'manager_id': request.user.id}
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["manager_id"] = self.request.user.id
+        return context
+    
 
-
-class ManagerLoginView(generics.CreateAPIView):
+class ManagerCreateView(generics.CreateAPIView):
     """
     Create a manager entry if the credentials are valid.
     """
@@ -57,6 +57,8 @@ class ManagerUpdateCredentialsView(generics.UpdateAPIView):
 
     def partial_update(self, serializer):
         try:
+            serializer = self.get_serializer(data=self.request.data)
+            serializer.is_valid(raise_exception=True)
             credentials = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user.id)
             credentials.url = self.request.data['url']
             credentials.username = self.request.data['username']
@@ -124,3 +126,4 @@ class CommentView(generics.CreateAPIView, generics.ListAPIView):
     """
     serializer_class = pokerboard_serializers.CommentSerializer
     permission_classes = [IsAuthenticated]
+    

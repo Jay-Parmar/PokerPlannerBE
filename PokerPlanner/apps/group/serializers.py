@@ -51,6 +51,9 @@ class AddGroupMemberSerializer(serializers.Serializer):
         if not group.exists():
             raise serializers.ValidationError("Group not found")
         
+        if group.first().owner == user.first():
+            raise serializers.ValidationError("Owner can't be added again")
+        
         if group.first().members.filter(email=email).exists():
             raise serializers.ValidationError("A member can't be added to a group twice")
         return data

@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
+from rest_framework import request, serializers
 from rest_framework.authtoken.models import Token
 
 from apps.user import models as user_models
@@ -78,8 +78,11 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate_old_password(self, value):
         user = self.context['request'].user
+        new_password = self.initial_data['password']
         if not user.check_password(value):
-            raise serializers.ValidationError({"old_password": "Old password is not correct"})
+            raise serializers.ValidationError("Old password is not correct")
+        if user.check_password(new_password):
+            raise serializers.ValidationError("New password is same as Old password")
         return value
 
     def update(self, instance, validated_data):

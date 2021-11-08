@@ -77,7 +77,7 @@ class ManagerLoginSerializer(serializers.ModelSerializer):
 
 
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
-    manager_id = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+    manager_id = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(), required=False)
     sprint_id = serializers.CharField(required=False, write_only=True)
     tickets = GetTicketsSerializer(required=False, write_only=True)
     jql = serializers.CharField(required=False, write_only=True)
@@ -87,12 +87,12 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         model = pokerboard_models.Pokerboard
         fields = [
             'manager_id', 'title', 'description', 'tickets', 'sprint_id',
-            'ticket_responses', 'jql'
+            'ticket_responses', 'jql', 'timer' 
         ]
 
     def get_ticket_responses(self, instance):
         user_obj = list(instance.items())[0][-1]
-        manager = pokerboard_models.ManagerCredentials.objects.get(user=user_obj)
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=self.context['manager_id'])
         jira = Jira(
             url = manager.url,
             username = manager.username,
@@ -127,7 +127,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         try:
             if(len(jql)==0):
                 raise serializers.ValidationError("Invalid Query")
-            issues = jira.jql(jql)['issues']    
+            issues = jira.jql(jql)['issues']  
             for issue in issues:
                 ticket_response = {}
                 key = issue['key']
@@ -155,21 +155,21 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
 
         if valid_tickets == 0:
             raise serializers.ValidationError('Invalid tickets!')
-        manager = user_models.User.objects.get(id=new_pokerboard["manager_id"]) 
+        manager = user_models.User.objects.get(id=self.context['manager_id']) 
         new_pokerboard["manager"] = manager
         pokerboard = pokerboard_models.Pokerboard.objects.create(**new_pokerboard)
         for ticket_response in ticket_responses:
             if ticket_response['status_code'] != 200:
                 continue
-            new_ticket_data = {}
-            new_ticket_data['pokerboard'] = pokerboard
-            new_ticket_data['ticket_id'] = ticket_response['key']
+            ticket_data = {}
+            ticket_data['pokerboard'] = pokerboard
+            ticket_data['ticket_id'] = ticket_response['key']
             count += 1
-            new_ticket_data['order'] = count
+            ticket_data['order'] = count
             ticket_id = ticket_response['key']
             ticket_response.pop('key')
             pokerboard_models.Ticket.objects.get_or_create(
-                ticket_id=ticket_id, defaults={**new_ticket_data}
+                ticket_id=ticket_id, defaults={**ticket_data}
             )
             ticket_response['key'] = ticket_id
         return pokerboard
