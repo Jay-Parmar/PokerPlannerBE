@@ -8,5 +8,3 @@ ROLE_CHOICES = (
 PENDING = 0
 ACCEPTED = 1
 DECLINED = 2
-Test = 10
-Test1 = 10
