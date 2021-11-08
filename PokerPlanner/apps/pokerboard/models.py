@@ -95,7 +95,7 @@ class Ticket(util_models.CommonInfo, util_models.SoftDeletionModel):
     ticket_id = models.SlugField(help_text="Ticket ID imported from JIRA")
     estimate = models.PositiveIntegerField(null=True, help_text="Final estimate of ticket")
     order = models.PositiveIntegerField(help_text="Order of displaying of tickets")
-    status = models.PositiveSmallIntegerField(help_text="Status of ticket", choices=STATUS_CHOICES, default=UNTOUCHED)
+    status = models.PositiveSmallIntegerField(help_text="Status of ticket", choices=STATUS_CHOICES, default=ONGOING)
     start_datetime = models.DateTimeField(null=True, blank=True)
     end_datetime = models.DateTimeField(null=True, blank=True)
 
@@ -114,7 +114,10 @@ class UserTicketEstimate(util_models.CommonInfo, util_models.SoftDeletionModel):
         Ticket, help_text="Ticket ID on database", related_name="estimations", on_delete=models.CASCADE
     )
     estimate = models.PositiveIntegerField(help_text="Final estimate of ticket")
-    estimation_time = models.PositiveIntegerField(help_text="Time taken by user to estimate (in seconds)")
+    estimation_time = models.PositiveIntegerField(help_text="Time taken by user to estimate (in seconds)", default=0, blank=True)
+
+    class Meta:
+        unique_together = ('user', 'ticket_id')
 
     def __str__(self):
         return f'User {self.user} - Estimated {self.estimate}'

@@ -88,7 +88,6 @@ class SessionConsumer(AsyncWebsocketConsumer):
        """
        Initialise game, fetches connceted users and votes already given
        """
-       print("Yes Intialized")
        votes = poker_models.UserTicketEstimate.objects.filter(ticket_id=self.ticket_id)
        vote_serializer = poker_serializers.VoteSerializer(instance=votes, many=True)
        clients = list(set(getattr(self.channel_layer, self.session_group_name, [])))
@@ -98,7 +97,7 @@ class SessionConsumer(AsyncWebsocketConsumer):
            "type": event["type"],
            "votes": vote_serializer.data,
            "users": serializer.data,
-           "timer": json.dumps(self.session.start_datetime, default=self.iso_format)
+           "timer": json.dumps(self.session.start_datetime, default=self.myconverter)
        }
  
    async def start_timer(self, event):
@@ -106,23 +105,46 @@ class SessionConsumer(AsyncWebsocketConsumer):
        Starts timer on current voting session
        """
        manager = self.session.pokerboard.manager
-       if self.scope["user"] == manager and self.session.status == poker_models.Ticket.ONGOING:
+       if self.scope["user"] == manager and self.session.status != poker_models.Ticket.ESTIMATED:
            now = datetime.now()
            self.session.start_datetime = now
            self.session.save()
            return {
                "type": event["type"],
-               "start_datetime": json.dumps(now, default=self.iso_format),
+               "start_datetime": json.dumps(now, default=self.myconverter),
            }
        else:
            await self.send(text_data=json.dumps({
                "error": "Can't start timer"
            }))
  
-   def iso_format(self, o):
-       if isinstance(o, datetime):
-           return o.__str__
+   def myconverter(self, obj):
+        """
+        convert datetime into json
+        """
+        if isinstance(obj, datetime):
+            return obj.__str__()
  
+   async def vote(self, event):
+        """
+        Places/update a vote on a ticket
+        """
+        
+        try:
+            context = {"user": self.scope['user'].id, 'ticket_id': self.session.id}
+            serializer = poker_serializers.VoteSerializer(data=event["message"], context=context)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return {
+                "type": event["type"],
+                "vote": serializer.data
+            }
+        except serializers.ValidationError as e:
+            print(e)
+            await self.send(text_data=json.dumps({
+                "error": "Invalid estimate"
+            }))
+
    async def estimate(self, event):
        """
        Finalize estimation of a ticket
@@ -188,3 +210,20 @@ class SessionConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event["message"]))
  
 
+   async def skip(self, event):
+    """
+    Skip current voting session
+    """
+    manager = self.manager_id
+    print(self.scope["user"].id)
+    print(self.session.status)
+    if self.scope["user"].id == manager and self.session.status == poker_models.Ticket.ONGOING:
+        self.session.status = poker_models.Ticket.SKIPPED
+        self.session.save()
+        return {
+            "type": event["type"],
+        }
+    else:
+        await self.send(text_data=json.dumps({
+            "error": "Can't skip"
+        }))
