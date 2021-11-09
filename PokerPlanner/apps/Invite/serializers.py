@@ -50,7 +50,7 @@ class InviteCreateSerializer(serializers.Serializer):
                 user = user_models.User.objects.get(email=attrs['email'])
                 users.append(user)
             except user_models.User.DoesNotExist as e:
-                user_tasks.send_invite_task.delay(attrs['email'])
+                user_tasks.send_invite_task(attrs['email'])
                 raise serializers.ValidationError("Email to signup in pokerplanner has been sent.Please check your email.")
         else:
             raise serializers.ValidationError('Group id or Email id is missing')

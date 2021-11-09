@@ -59,6 +59,3 @@ class GroupMemberView(CreateAPIView, DestroyAPIView):
         group_instance = group_models.Group.objects.get(id=group_id)
         group_instance.members.remove(user_instance)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
-
-
-

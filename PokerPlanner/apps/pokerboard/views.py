@@ -2,7 +2,7 @@ from django.contrib.postgres import fields
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models.query_utils import Q
 from django.http import request
-from rest_framework import generics, viewsets, status, serializers
+from rest_framework import generics, mixins, viewsets, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -85,7 +85,9 @@ class ManagerListCredentialView(generics.ListAPIView):
             return Response("No such Credentials found", status=status.HTTP_400_BAD_REQUEST)
 
 
-class PokerboardMembersView(viewsets.ModelViewSet):
+class PokerboardMembersView(mixins.RetrieveModelMixin,
+                            mixins.DestroyModelMixin,
+                            viewsets.GenericViewSet):
     """
     Pokerboard member API View for listing and removing user/groups
     """

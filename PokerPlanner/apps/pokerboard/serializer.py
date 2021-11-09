@@ -3,10 +3,7 @@ import requests
 from rest_framework import serializers, status
 
 from apps.group import models as group_models
-from apps.pokerboard import (
-    constants,
-    models as pokerboard_models
-)
+from apps.pokerboard import models as pokerboard_models
 from apps.user import (
     models as user_models,
     serializers as user_serializers
