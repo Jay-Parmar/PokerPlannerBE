@@ -1,5 +1,6 @@
-from django.urls.conf import path
-from rest_framework import generics, viewsets, status, serializers
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db.models.query_utils import Q
+from rest_framework import generics, mixins, viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -11,33 +12,25 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
     """
     Pokerboard View for CRUD operations
     """
-    queryset = pokerboard_models.Pokerboard.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.action == 'create':
             return pokerboard_serializers.PokerBoardCreationSerializer
         return pokerboard_serializers.PokerBoardSerializer
     
     def get_queryset(self):
-        return pokerboard_models.Pokerboard.objects.filter(manager=self.request.user)
+        user = pokerboard_models.Pokerboard.objects.filter(Q(manager=self.request.user) |
+                             Q(invites__user=self.request.user, invites__status=1)).distinct()
+        return user
 
-    def create(self, request, *args, **kwargs):
-        """
-        Create new pokerboard
-        Required : Token in header, Title, Description
-        Optional : Estimate_type
-        """
-        serializer = self.get_serializer(
-            data={**request.data, 'manager_id': request.user.id}
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["manager_id"] = self.request.user.id
+        return context
+    
 
-
-class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
+class ManagerCreateView(generics.CreateAPIView):
     """
     Create a manager entry if the credentials are valid.
     """
@@ -54,38 +47,6 @@ class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
             return pokerboard_models.ManagerCredentials.objects.all()
         return pokerboard_models.ManagerCredentials.objects.filter(user=self.request.user)
 
-    def update(self, request, *args, **kwargs):
-        instance = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
-        print("instance:::", instance.data)
-        serializer = self.get_serializer(instance)
-        print("Seria:::", serializer)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    # def patch(self, request):
-    #     print(":::req", request)
-    #     testmodel_object = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
-    #     serializer = pokerboard_serializers.ManagerDetailSerializer(testmodel_object, 
-    #                  data=request.data, partial=True)
-    #     serializer.is_valid(raise_exception=True)
-    #     serializer.save()
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        # user_data = {
-        #     "password": request.password,
-        #     "url": instance.url,
-        #     "username": instance.username,
-        # }
-        # serializer = pokerboard_serializers.ManagerDetailSerializer(data=user_data)
-        # serializer.is_valid(raise_exception=True)
-        # serializer.save()
-        instance.password = request.password
-        instance.save()
-        return Response(data={"message": "successfully updated"}, status=status.HTTP_200_OK)
-
     def perform_create(self, serializer):
         try:
             serializer.save(user = self.request.user)
@@ -94,7 +55,47 @@ class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
             # return self.partial_update(self.request)
 
 
-class PokerboardMembersView(viewsets.ModelViewSet):
+class ManagerUpdateCredentialsView(generics.UpdateAPIView):
+    """
+    Create a manager entry if the credentials are valid.
+    """
+    queryset = pokerboard_models.ManagerCredentials.objects.all()
+    serializer_class = pokerboard_serializers.ManagerLoginSerializer
+    permission_classes = [IsAuthenticated,]
+
+    def partial_update(self, serializer):
+        try:
+            serializer = self.get_serializer(data=self.request.data)
+            serializer.is_valid(raise_exception=True)
+            credentials = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user.id)
+            credentials.url = self.request.data['url']
+            credentials.username = self.request.data['username']
+            credentials.password = self.request.data['password']
+            credentials.save()
+        except ObjectDoesNotExist:
+            raise ValidationError("No such user found")
+        return Response("update successfull")
+
+class ManagerListCredentialView(generics.ListAPIView):
+    """
+    View for retrieving all invites sent by manager to uers
+    """
+    serializer_class = pokerboard_serializers.ManagerCredentialSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('user_id')
+        credentials = pokerboard_models.ManagerCredentials.objects.filter(user=user_id)
+        if credentials.first():
+            serializer = self.get_serializer(credentials, many=True)
+            return Response(serializer.data)
+        else:
+            return Response("No such Credentials found", status=status.HTTP_400_BAD_REQUEST)
+
+
+class PokerboardMembersView(mixins.RetrieveModelMixin,
+                            mixins.DestroyModelMixin,
+                            viewsets.GenericViewSet):
     """
     Pokerboard member API View for listing and removing user/groups
     """
@@ -135,3 +136,4 @@ class CommentView(generics.CreateAPIView, generics.ListAPIView):
     """
     serializer_class = pokerboard_serializers.CommentSerializer
     permission_classes = [IsAuthenticated]
+    

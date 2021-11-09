@@ -93,7 +93,7 @@ DATABASES = {
         'HOST': config('HOST'),
         'PORT': '',
         'TEST': {
-            'NAME': 'mytestdatabase',
+            'NAME': 'mytestdatabase1',
         }
     }
 }

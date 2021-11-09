@@ -3,17 +3,13 @@ import requests
 from rest_framework import serializers, status
 
 from apps.group import models as group_models
-from apps.pokerboard import (
-    constants,
-    models as pokerboard_models
-)
+from apps.pokerboard import models as pokerboard_models
 from apps.user import (
     models as user_models,
     serializers as user_serializers
-) 
+)
 
 from atlassian import Jira
-
 
 
 class GetTicketsSerializer(serializers.ListSerializer):
@@ -36,11 +32,20 @@ class PokerBoardSerializer(serializers.ModelSerializer):
                   'estimate_type', 'ticket']
 
 
+class ManagerCredentialSerializer(serializers.ModelSerializer):
+    """
+    Serializer to get Manager Credentials in Database.
+    """
+    class Meta:
+        model = pokerboard_models.ManagerCredentials
+        fields = '__all__'
+
+
 class ManagerLoginSerializer(serializers.ModelSerializer):
     """
     Serializer to save Manager Credentials in Database.
     """
-    
+
     class Meta:
         model = pokerboard_models.ManagerCredentials
         fields = ['url', 'username', 'password']
@@ -54,16 +59,16 @@ class ManagerLoginSerializer(serializers.ModelSerializer):
         """
         try:
             jira = Jira(
-                url = attrs.get('url'),
-                username = attrs.get('username'),
-                password = attrs.get('password'),
+                url=attrs.get('url'),
+                username=attrs.get('username'),
+                password=attrs.get('password'),
             )
             response = jira.jql("")
             if not response['total']:
                 raise serializers.ValidationError("No issue tickets Found")
         except Exception as err:
             raise serializers.ValidationError("Invalid Credentials")
-        
+
         return attrs
 
 
@@ -71,7 +76,7 @@ class ManagerDetailSerializer(serializers.ModelSerializer):
     """
     Serializer to save Manager Credentials in Database.
     """
-    
+
     class Meta:
         model = pokerboard_models.ManagerCredentials
         fields = ['url', 'username', 'password']
@@ -83,7 +88,8 @@ class ManagerDetailSerializer(serializers.ModelSerializer):
 
 
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
-    manager_id = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+    manager_id = serializers.PrimaryKeyRelatedField(
+        queryset=user_models.User.objects.all(), required=False)
     sprint_id = serializers.CharField(required=False, write_only=True)
     tickets = GetTicketsSerializer(required=False, write_only=True)
     jql = serializers.CharField(required=False, write_only=True)
@@ -93,27 +99,26 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         model = pokerboard_models.Pokerboard
         fields = [
             'manager_id', 'title', 'description', 'tickets', 'sprint_id',
-            'ticket_responses', 'jql'
+            'ticket_responses', 'jql', 'timer'
         ]
 
     def get_ticket_responses(self, instance):
         user_obj = list(instance.items())[0][-1]
-        manager = pokerboard_models.ManagerCredentials.objects.get(user=user_obj)
+        manager = pokerboard_models.ManagerCredentials.objects.get(
+            user=self.context['manager_id'])
         jira = Jira(
-            url = manager.url,
-            username = manager.username,
-            password = manager.password,
+            url=manager.url,
+            username=manager.username,
+            password=manager.password,
         )
         data = dict(instance)
         ticket_responses = []
         i = 0
         myJql = ""
 
-        # If sprint, then fetch all tickets in sprint and add
         if 'sprint_id' in data:
             myJql = "Sprint = " + data['sprint_id']
 
-        # Adding tickets
         if 'tickets' in data.keys():
             tickets = data['tickets']
             serializer = GetTicketsSerializer(data=tickets)
@@ -122,21 +127,20 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             if(len(myJql) != 0):
                 myJql += " OR "
             myJql += "issueKey in ("
-            for ticket in tickets: #list appen
+            for ticket in tickets:
                 myJql = myJql + ticket + ','
             myJql = myJql[:-1] + ')'
 
-        # Adding jql
         if 'jql' in data.keys():
             if(len(myJql) != 0):
                 myJql += " OR "
             myJql += data['jql']
 
         jql = myJql
-        if(len(jql)==0):
+        if(len(jql) == 0):
             raise serializers.ValidationError("Invalid Query")
         try:
-            issues = jira.jql(jql)['issues']    
+            issues = jira.jql(jql)['issues']
             for issue in issues:
                 ticket_response = {}
                 key = issue['key']
@@ -166,21 +170,22 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
 
         if valid_tickets == 0:
             raise serializers.ValidationError('Invalid tickets!')
-        manager = user_models.User.objects.get(id=new_pokerboard["manager_id"]) 
+        manager = user_models.User.objects.get(id=self.context['manager_id'])
         new_pokerboard["manager"] = manager
-        pokerboard = pokerboard_models.Pokerboard.objects.create(**new_pokerboard)
+        pokerboard = pokerboard_models.Pokerboard.objects.create(
+            **new_pokerboard)
         for ticket_response in ticket_responses:
             if ticket_response['status_code'] != 200:
                 continue
-            new_ticket_data = {}
-            new_ticket_data['pokerboard'] = pokerboard
-            new_ticket_data['ticket_id'] = ticket_response['key']
+            ticket_data = {}
+            ticket_data['pokerboard'] = pokerboard
+            ticket_data['ticket_id'] = ticket_response['key']
             count += 1
-            new_ticket_data['order'] = count
+            ticket_data['order'] = count
             ticket_id = ticket_response['key']
             ticket_response.pop('key')
             pokerboard_models.Ticket.objects.get_or_create(
-                ticket_id=ticket_id, defaults={**new_ticket_data}
+                ticket_id=ticket_id, defaults={**ticket_data}
             )
             ticket_response['key'] = ticket_id
         return pokerboard
@@ -207,12 +212,14 @@ class PokerboardTicketSerializer(serializers.ModelSerializer):
     PokerBoard tickets Serializer for updating and listing pokerboard tickets.
     """
     pokerboard = PokerBoardSerializer()
+
     class Meta:
         model = pokerboard_models.Ticket
-        fields = ['id', 'pokerboard', 'ticket_id', 'estimate', 'order', 'status']
+        fields = ['id', 'pokerboard', 'ticket_id',
+                'estimate', 'order', 'status']
         # TODO: add a methodfield here so that while fetching an  entity from ticket table
         # ticket details come in that request too. and on updatinf final estimate it should be
-        #updated on JIRA as well
+        # updated on JIRA as well
 
 
 class CommentSerializer(serializers.Serializer):
@@ -230,7 +237,7 @@ class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = pokerboard_models.UserTicketEstimate
         fields = ["estimate", "ticket_id", "user", "estimation_time"]
-    
+
     def create(self, validated_data):
         """
         Create or update a vote
@@ -241,9 +248,10 @@ class VoteSerializer(serializers.ModelSerializer):
             user=validated_data['user'],
             estimation_time=validated_data['estimation_time'],
             defaults={
-                'estimate':validated_data['estimate']
+                'estimate': validated_data['estimate']
             }
         )
+
 
 class PokerboardMemberSerializer(serializers.ModelSerializer):
     """
@@ -256,6 +264,6 @@ class PokerboardMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = pokerboard_models.PokerboardUser
         fields = ['id', 'user', 'role', 'pokerboard', 'group']
-    
+
     def get_role(self, obj):
         return obj.get_role_display()
