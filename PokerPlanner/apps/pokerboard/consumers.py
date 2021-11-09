@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+import re
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import serializers
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -146,42 +147,40 @@ class SessionConsumer(AsyncWebsocketConsumer):
             }))
 
    async def estimate(self, event):
-       """
-       Finalize estimation of a ticket
-       """
-       try:
-           manager = self.session.pokerboard.manager
-           if self.scope["user"] == manager and self.session.status == poker_models.Ticket.ONGOING:
-               self.session.status = poker_models.Ticket.ESTIMATED
-               self.session.estimate = event.message.estimate
- 
-               jira_manager = poker_models.ManagerCredentials.objects.get(user=manager)
-               jira = Jira(
-                   url = jira_manager.url,
-                   username = jira_manager.username,
-                   password = jira_manager.password,
-               )
- 
-               fields = {'customfield_10016': event.message.estimate}
-               jira.update_issue_field(self.session.ticket_id, fields)
- 
-               self.session.save()
- 
-               await self.channel_layer.group_send(
-                   self.session_group_name,
-                   {
-                       "type": event["type"],
-                       "estimate": event["message"]["estimate"]
-                   }
-               )
-           else:
-               await self.send(text_data=json.dumps({
-                   "error": "Only manager can finalize estimate"
-               }))
-       except serializers.ValidationError as e:
-           await self.send(text_data=json.dumps({
-               "error": "Estimation failed"
-           }))
+        """
+        Finalize estimation of a ticket.
+        """
+        try:
+            manager = self.session.pokerboard.manager
+            if self.scope["user"] == manager:
+                self.session.status = poker_models.Ticket.ESTIMATED
+                print(":::event inside estimate", event)
+                self.session.estimate = event["message"]["estimate"]
+
+                jira_manager = poker_models.ManagerCredentials.objects.get(user=manager)
+                jira = Jira(
+                    url = jira_manager.url,
+                    username = jira_manager.username,
+                    password = jira_manager.password,
+                )
+
+                fields = {'customfield_10016': event["message"]["estimate"]}
+                jira.update_issue_field(self.session.ticket_id, fields)
+
+                self.session.save()
+
+                return {
+                    "type": event["type"],
+                    "estimate": event["message"]["estimate"]
+                }
+            else:
+                await self.send(text_data=json.dumps({
+                    "error": "Only manager can finalize estimate"
+                }))
+        except serializers.ValidationError as e:
+            await self.send(text_data=json.dumps({
+                "error": "Estimation failed"
+            }))
  
    async def disconnect(self, code):
         """
