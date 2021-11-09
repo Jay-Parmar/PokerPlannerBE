@@ -13,6 +13,6 @@ router.register('', pokerboard_views.PokerBoardViewSet)
 
 urlpatterns = [
     path('',include(router.urls)),
-    path('comment',pokerboard_views.CommentView.as_view(), name="comment"),
+    path('comment', pokerboard_views.CommentView.as_view()),
     path('manager', pokerboard_views.ManagerLoginView.as_view()),
 ]

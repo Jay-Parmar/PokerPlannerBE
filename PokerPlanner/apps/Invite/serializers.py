@@ -31,9 +31,11 @@ class InviteSerializer(serializers.ModelSerializer):
 
 class InviteCreateSerializer(serializers.Serializer):
     pokerboard = serializers.PrimaryKeyRelatedField(
-        queryset=pokerboard_models.Pokerboard.objects.all())
+        queryset=pokerboard_models.Pokerboard.objects.all()
+    )
     group_id = serializers.PrimaryKeyRelatedField(
-        queryset=group_models.Group.objects.all(), required=False)
+        queryset=group_models.Group.objects.all(), required=False
+    )
     email = serializers.EmailField(required=False)
     user_role = serializers.ChoiceField(
         choices=constants.ROLE_CHOICES, required=False)
@@ -72,7 +74,7 @@ class InviteCreateSerializer(serializers.Serializer):
         invited_players = []
         for user in users:
             # invite = Invite.objects.update_or_create( pokerboard_id = pokerboard.id, user_id = user.id, defaults={'status' : constants.PENDING,'user_role' : role})
-            poke_user = pokerboard_models.PokerboardUser.objects.filter(user=user.id,pokerboard=pokerboard.id)
+            poke_user = pokerboard_models.PokerboardUser.objects.filter(user=user,pokerboard=pokerboard.id)
             if not poke_user.exists() and pokerboard.manager != user:
                 try:
                     invite = pokerboard_models.Invite.objects.get(pokerboard_id = pokerboard.id, user_id = user.id)

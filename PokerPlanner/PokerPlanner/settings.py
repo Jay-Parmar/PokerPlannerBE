@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'apps.group',
     'apps.pokerboard',
     'corsheaders',
+    'channels',
     'apps.Invite',
 ]
 
@@ -78,8 +79,18 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'PokerPlanner.wsgi.application'
+# WSGI_APPLICATION = 'PokerPlanner.wsgi.application'
+ASGI_APPLICATION = 'PokerPlanner.asgi.application'
 AUTH_USER_MODEL = 'user.User'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases

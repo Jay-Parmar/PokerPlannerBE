@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from apps.pokerboard import models as pokerboard_models
 from apps.pokerboard import serializer as pokerboard_serializers
 
+from atlassian import Jira
 
 class PokerBoardViewSet(viewsets.ModelViewSet):
     """
@@ -15,14 +16,14 @@ class PokerBoardViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.request.method == 'POST':  #self action
             return pokerboard_serializers.PokerBoardCreationSerializer
         return pokerboard_serializers.PokerBoardSerializer
     
     def get_queryset(self):
         return pokerboard_models.Pokerboard.objects.filter(manager=self.request.user)
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):  #context use of
         """
         Create new pokerboard
         Required : Token in header, Title, Description
@@ -49,9 +50,7 @@ class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
             return pokerboard_serializers.ManagerLoginSerializer
         return pokerboard_serializers.ManagerDetailSerializer
 
-    def get_queryset(self):
-        if self.request.method == 'POST':
-            return pokerboard_models.ManagerCredentials.objects.all()
+    def get_queryset(self):  #post(create) me queryset ki zarurt nai hoti
         return pokerboard_models.ManagerCredentials.objects.filter(user=self.request.user)
 
     def update(self, request, *args, **kwargs):
@@ -88,7 +87,7 @@ class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(user = self.request.user)
+            serializer.save(user=self.request.user)
         except Exception as err:
             return Response(data={'msg': 'User already present'}, status=status.HTTP_200_OK)
             # return self.partial_update(self.request)
@@ -129,9 +128,27 @@ class TicketViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class CommentView(generics.CreateAPIView, generics.ListAPIView):
+class CommentView(generics.CreateAPIView):
     """
     Comment View to comment on a JIRA ticket
     """
     serializer_class = pokerboard_serializers.CommentSerializer
-    permission_classes = [IsAuthenticated]
+    queryset = pokerboard_models.ManagerCredentials.objects.all()
+    permission_classes = [IsAuthenticated,]
+
+    def perform_create(self, serializer):
+        """
+        Create a comment on Jira.
+        """
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
+        jira = Jira(
+            url = manager.url,
+            username = manager.username,
+            password = manager.password,
+        )
+        jira.issue_add_comment(serializer.validated_data['ticket_id'], serializer.validated_data['comment'])
+
+
+class TicketDetailView(generics.RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
