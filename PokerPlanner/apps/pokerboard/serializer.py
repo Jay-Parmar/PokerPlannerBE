@@ -19,7 +19,7 @@ class GetTicketsSerializer(serializers.ListSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = pokerboard_models.Ticket
-        fields = ['pokerboard', 'ticket_id', 'order', 'status']
+        fields = ['id', 'pokerboard', 'ticket_id', 'order', 'status']
 
 
 class PokerBoardSerializer(serializers.ModelSerializer):
@@ -29,7 +29,7 @@ class PokerBoardSerializer(serializers.ModelSerializer):
     class Meta:
         model = pokerboard_models.Pokerboard
         fields = ['id', 'manager', 'title', 'description',
-                  'estimate_type', 'ticket']
+                  'estimate_type', 'ticket', 'timer']
 
 
 class ManagerCredentialSerializer(serializers.ModelSerializer):
@@ -204,7 +204,7 @@ class PokerBoardUserGroupSerialzier(serializers.ModelSerializer):
 class PokerboardUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = pokerboard_models.PokerboardUser
-        fields = ['user', 'role', 'pokerboard']
+        fields = ['id', 'user', 'role', 'pokerboard']
 
 
 class PokerboardTicketSerializer(serializers.ModelSerializer):
@@ -234,23 +234,35 @@ class VoteSerializer(serializers.ModelSerializer):
     """
     Vote Serializer for creating and listing votes.
     """
+    user = user_serializers.UserSerializer(read_only=True)
     class Meta:
         model = pokerboard_models.UserTicketEstimate
-        fields = ["estimate", "ticket_id", "user", "estimation_time"]
+        fields = ["id", "estimate", "ticket_id", "user"]
+        extra_kwargs = {
+            "ticket_id": {
+                "read_only": True
+            }
+        }
+
+    def validate(self, data):
+        print("::: ticket :::", self.context['ticket_id'])
+        data['ticket_id'] = self.context['ticket_id']
+        data['user'] = self.context['user']
+        return super().validate(data)
 
     def create(self, validated_data):
         """
         Create or update a vote
         """
         vote, created = pokerboard_models.UserTicketEstimate.objects.update_or_create(
-            estimate=validated_data['estimate'],
-            ticket_id=validated_data['ticket_id'],
-            user=validated_data['user'],
-            estimation_time=validated_data['estimation_time'],
+            ticket_id_id=validated_data['ticket_id'],
+            user_id=validated_data['user'],
             defaults={
                 'estimate': validated_data['estimate']
             }
         )
+        print(":::Created :::", created)
+        return vote
 
 
 class PokerboardMemberSerializer(serializers.ModelSerializer):
