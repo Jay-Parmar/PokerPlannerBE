@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-import re
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import serializers
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -154,7 +153,6 @@ class SessionConsumer(AsyncWebsocketConsumer):
             manager = self.session.pokerboard.manager
             if self.scope["user"] == manager:
                 self.session.status = poker_models.Ticket.ESTIMATED
-                print(":::event inside estimate", event)
                 self.session.estimate = event["message"]["estimate"]
 
                 jira_manager = poker_models.ManagerCredentials.objects.get(user=manager)

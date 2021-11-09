@@ -1,15 +1,17 @@
-import requests
-
 from rest_framework import serializers, status
 
 from apps.group import models as group_models
-from apps.pokerboard import models as pokerboard_models
+from apps.pokerboard import (
+    constants as pokerboard_constants,
+    models as pokerboard_models
+)
 from apps.user import (
     models as user_models,
     serializers as user_serializers
 )
 
 from atlassian import Jira
+
 
 
 class GetTicketsSerializer(serializers.ListSerializer):
@@ -28,8 +30,7 @@ class PokerBoardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = pokerboard_models.Pokerboard
-        fields = ['id', 'manager', 'title', 'description',
-                  'estimate_type', 'ticket', 'timer']
+        fields = ['id', 'manager', 'title', 'description', 'estimate_type', 'ticket', 'timer']
 
 
 class ManagerCredentialSerializer(serializers.ModelSerializer):
@@ -87,6 +88,14 @@ class ManagerDetailSerializer(serializers.ModelSerializer):
         }
 
 
+class ValidateMessageSerializer(serializers.Serializer):
+    """
+    Message serializer for validating a message
+    """
+    message_type = serializers.ChoiceField(choices=pokerboard_constants.MESSAGE_TYPES)
+    message = serializers.OrderedDict()
+
+
 class PokerBoardCreationSerializer(serializers.ModelSerializer):
     manager_id = serializers.PrimaryKeyRelatedField(
         queryset=user_models.User.objects.all(), required=False)
@@ -140,7 +149,8 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         if(len(jql) == 0):
             raise serializers.ValidationError("Invalid Query")
         try:
-            issues = jira.jql(jql)['issues']
+            response = jira.jql(jql)
+            issues = response['issues']
             for issue in issues:
                 ticket_response = {}
                 key = issue['key']

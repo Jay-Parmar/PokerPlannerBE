@@ -8,3 +8,5 @@ ROLE_CHOICES = (
 PENDING = 0
 ACCEPTED = 1
 DECLINED = 2
+
+MESSAGE_TYPES = ["estimate", "skip", "vote", "initialise_game", "start_timer"]
