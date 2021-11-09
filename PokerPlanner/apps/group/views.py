@@ -1,6 +1,8 @@
 from django.db.models.query_utils import Q
-from rest_framework import status, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import mixins, status, viewsets
 from rest_framework.generics import CreateAPIView, DestroyAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.group import models as group_models
@@ -40,22 +42,30 @@ class GroupViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
 
-class GroupMemberView(CreateAPIView, DestroyAPIView):
+class GroupAddMemberView(CreateAPIView):
     """
     Group user API for adding and removing group member
     """
     serializer_class = group_serializer.AddGroupMemberSerializer
     permission_classes = [IsGroupOwnerPermission]
 
+
+class GroupDeleteMemberView(viewsets.GenericViewSet, mixins.DestroyModelMixin):
+    """
+    View to remove user from a group.
+    """
+    permission_classes=[IsAuthenticated]
+    
+    def get_queryset(self):
+        group = get_object_or_404(group_models.Group, id=self.kwargs['group_id'])
+        return group.members.all()
+
     def destroy(self, request, *args, **kwargs):
-        """
-        Removes a member from a group
-        """
-        serializer = group_serializer.RemoveGroupMemberSerializer(data=request.data)
+        group = group_models.Group.objects.get(id=self.kwargs['group_id'])
+        user = self.get_object()
+        serializer = group_serializer.RemoveGroupMemberSerializer(
+            data={"user": user.id}, context={'group': group}
+        )
         serializer.is_valid(raise_exception=True)
-        group_id = serializer.data["group"]
-        email = serializer.data["email"]
-        user_instance = user_models.User.objects.get(email=email)
-        group_instance = group_models.Group.objects.get(id=group_id)
-        group_instance.members.remove(user_instance)
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+        group.members.remove(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
