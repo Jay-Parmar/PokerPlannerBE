@@ -15,6 +15,7 @@ urlpatterns = [
     path('managercredentials/update', pokerboard_views.ManagerUpdateCredentialsView.as_view()),
     path('managercredentials', pokerboard_views.ManagerListCredentialView.as_view()),
     path('',include(router.urls)),
-    path('comment',pokerboard_views.CommentView.as_view(), name="comment"),
+    path('comment', pokerboard_views.CommentView.as_view(), name="comment"),
     path('manager', pokerboard_views.ManagerCreateView.as_view()),
+    path('jiraticket', pokerboard_views.TicketDetailView.as_view()),
 ]

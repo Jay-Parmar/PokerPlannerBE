@@ -108,6 +108,7 @@ class SessionConsumer(AsyncWebsocketConsumer):
        if self.scope["user"] == manager and self.session.status != poker_models.Ticket.ESTIMATED:
            now = datetime.now()
            self.session.start_datetime = now
+           self.session.status = poker_models.Ticket.ONGOING
            self.session.save()
            return {
                "type": event["type"],
