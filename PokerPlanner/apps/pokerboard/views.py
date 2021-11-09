@@ -1,6 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models.query_utils import Q
-from rest_framework import generics, mixins, viewsets, status
+from rest_framework import generics, mixins, viewsets, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -129,7 +129,7 @@ class TicketViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class CommentView(generics.CreateAPIView):
+class CommentView(generics.CreateAPIView, generics.RetrieveAPIView):
     """
     Comment View to comment on a JIRA ticket
     """
@@ -147,9 +147,57 @@ class CommentView(generics.CreateAPIView):
             username = manager.username,
             password = manager.password,
         )
-        jira.issue_add_comment(serializer.validated_data['ticket_id'], serializer.validated_data['comment'])
+        jira_ticket_id = pokerboard_models.Ticket.objects.get(id=serializer.validated_data['ticket_id']).ticket_id
+        jira.issue_add_comment(jira_ticket_id, serializer.validated_data['comment'])
+
+    def get(self, request, *args, **kwargs):
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
+        jira = Jira(
+            url = manager.url,
+            username = manager.username,
+            password = manager.password,
+        )
+
+        ticket_id = request.query_params.get('ticket_id')
+        jira_ticket_id = pokerboard_models.Ticket.objects.get(id=ticket_id).ticket_id
+        my_jql = "issueKey in (" + jira_ticket_id + ")"
+        try:
+            response = jira.jql(my_jql)
+            comments = response['issues'][0]['fields']['comment']['comments']
+            comment_list = [comment["body"] for comment in comments]
+            return Response({"comments": comment_list}, status=status.HTTP_200_OK)
+        except Exception as e:
+            if str(e).startswith("400 Client Error"):
+                raise serializers.ValidationError("Invalid Query")
+            raise serializers.ValidationError(str(e))
 
 
 class TicketDetailView(generics.RetrieveAPIView):
+    """
+    To fetch details of ticket from jira.
+    """
     def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+        ticket_id = request.query_params.get('ticket_id')
+        ticket = pokerboard_models.Ticket.objects.get(id=ticket_id)
+        user = ticket.pokerboard.manager
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=user)
+        jira = Jira(
+            url = manager.url,
+            username = manager.username,
+            password = manager.password,
+        )
+        jira_ticket_id = ticket.ticket_id
+        my_jql = "issueKey in (" + jira_ticket_id + ")"
+        try:
+            issues = jira.jql(my_jql)['issues'][0]
+            data = {
+                'key': issues['key'],
+                'title': issues['fields']['summary'],
+                'description': issues['fields']['description'],
+                'estimate': issues['fields']['customfield_10016'],
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            if str(e).startswith("400 Client Error"):
+                raise serializers.ValidationError("Invalid Jira Query")
+            raise serializers.ValidationError(str(e))
