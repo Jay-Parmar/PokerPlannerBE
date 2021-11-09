@@ -50,47 +50,14 @@ class ManagerLoginView(generics.ListCreateAPIView, generics.UpdateAPIView):
             return pokerboard_serializers.ManagerLoginSerializer
         return pokerboard_serializers.ManagerDetailSerializer
 
-    def get_queryset(self):  #post(create) me queryset ki zarurt nai hoti
+    def get_queryset(self):
         return pokerboard_models.ManagerCredentials.objects.filter(user=self.request.user)
-
-    def update(self, request, *args, **kwargs):
-        instance = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
-        print("instance:::", instance.data)
-        serializer = self.get_serializer(instance)
-        print("Seria:::", serializer)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    # def patch(self, request):
-    #     print(":::req", request)
-    #     testmodel_object = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
-    #     serializer = pokerboard_serializers.ManagerDetailSerializer(testmodel_object, 
-    #                  data=request.data, partial=True)
-    #     serializer.is_valid(raise_exception=True)
-    #     serializer.save()
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        # user_data = {
-        #     "password": request.password,
-        #     "url": instance.url,
-        #     "username": instance.username,
-        # }
-        # serializer = pokerboard_serializers.ManagerDetailSerializer(data=user_data)
-        # serializer.is_valid(raise_exception=True)
-        # serializer.save()
-        instance.password = request.password
-        instance.save()
-        return Response(data={"message": "successfully updated"}, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         try:
             serializer.save(user=self.request.user)
         except Exception as err:
             return Response(data={'msg': 'User already present'}, status=status.HTTP_200_OK)
-            # return self.partial_update(self.request)
 
 
 class PokerboardMembersView(viewsets.ModelViewSet):
