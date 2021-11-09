@@ -150,15 +150,17 @@ class CommentView(generics.CreateAPIView, generics.RetrieveAPIView):
         jira.issue_add_comment(jira_ticket_id, serializer.validated_data['comment'])
 
     def get(self, request, *args, **kwargs):
-        manager = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
+        ticket_id = request.query_params.get('ticket_id')
+        ticket = pokerboard_models.Ticket.objects.get(id=ticket_id)
+        user = ticket.pokerboard.manager
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=user)
         jira = Jira(
             url = manager.url,
             username = manager.username,
             password = manager.password,
         )
 
-        ticket_id = request.query_params.get('ticket_id')
-        jira_ticket_id = pokerboard_models.Ticket.objects.get(id=ticket_id).ticket_id
+        jira_ticket_id = ticket.ticket_id
         my_jql = "issueKey in (" + jira_ticket_id + ")"
         try:
             response = jira.jql(my_jql)
@@ -176,14 +178,16 @@ class TicketDetailView(generics.RetrieveAPIView):
     To fetch details of ticket from jira.
     """
     def get(self, request, *args, **kwargs):
-        manager = pokerboard_models.ManagerCredentials.objects.get(user=self.request.user)
+        ticket_id = request.query_params.get('ticket_id')
+        ticket = pokerboard_models.Ticket.objects.get(id=ticket_id)
+        user = ticket.pokerboard.manager
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=user)
         jira = Jira(
             url = manager.url,
             username = manager.username,
             password = manager.password,
         )
-        ticket_id = request.query_params.get('ticket_id')
-        jira_ticket_id = pokerboard_models.Ticket.objects.get(id=ticket_id).ticket_id
+        jira_ticket_id = ticket.ticket_id
         my_jql = "issueKey in (" + jira_ticket_id + ")"
         try:
             issues = jira.jql(my_jql)['issues'][0]
