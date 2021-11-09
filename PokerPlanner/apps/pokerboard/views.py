@@ -74,6 +74,7 @@ class ManagerUpdateCredentialsView(generics.UpdateAPIView):
             raise ValidationError("No such user found")
         return Response("update successfull")
 
+
 class ManagerListCredentialView(generics.ListAPIView):
     """
     View for retrieving all invites sent by manager to uers

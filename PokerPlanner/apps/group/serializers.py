@@ -69,31 +69,48 @@ class AddGroupMemberSerializer(serializers.Serializer):
         group_instance.members.add(user_instance)
         return validated_data
 
+# class RemoveGroupMemberSerializer(serializers.Serializer):
+#     """
+#     Serializer for removing member to a group
+#     If exists, check if the user is part of the group.
+#     """
+#     email = serializers.EmailField(required=False)
+#     user = user_serializers.UserSerializer(read_only=True)    
+#     group = serializers.IntegerField(required=False)
+    
+#     def validate(self, data):
+#         """
+#         Checks if user with given email exists or not.
+#         """
+#         email = self.data["email"]
+#         group_id = self.data["group"]
+
+#         user = user_models.User.objects.filter(email=email)
+#         if not user.exists():
+#             raise serializers.ValidationError("No such user")
+        
+#         group = group_models.Group.objects.filter(id=group_id)
+#         if not group.exists():
+#             raise serializers.ValidationError("Group not found")
+
+#         if not group.first().members.filter(email=email).exists():
+#             raise serializers.ValidationError("User does not exists in the group")
+    
+#         return data
+
 class RemoveGroupMemberSerializer(serializers.Serializer):
     """
-    Serializer for removing member to a group
-    If exists, check if the user is part of the group.
+    Serializer to remove user from a group.
     """
-    email = serializers.EmailField()
-    user = user_serializers.UserSerializer(read_only=True)    
-    group = serializers.IntegerField()
-    
-    def validate(self, data):
-        """
-        Checks if user with given email exists or not.
-        """
-        email = data["email"]
-        group_id = data["group"]
+    user = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
 
-        user = user_models.User.objects.filter(email=email)
-        if not user.exists():
-            raise serializers.ValidationError("No such user")
-        
-        group = group_models.Group.objects.filter(id=group_id)
-        if not group.exists():
-            raise serializers.ValidationError("Group not found")
-
-        if not group.first().members.filter(email=email).exists():
-            raise serializers.ValidationError("User does not exists in the group")
-    
-        return data
+    def validate_user(self, user):
+        """
+        Validating user which is to be removed.
+        """
+        group = self.context['group']
+        if group.owner == user:
+            raise serializers.ValidationError(
+                "Cannot delete creator of group."
+            )
+        return user
