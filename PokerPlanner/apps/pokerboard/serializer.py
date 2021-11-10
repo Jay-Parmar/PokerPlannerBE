@@ -1,3 +1,4 @@
+import requests
 from rest_framework import serializers, status
 
 from apps.group import models as group_models
@@ -112,9 +113,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         ]
 
     def get_ticket_responses(self, instance):
-        user_obj = list(instance.items())[0][-1]
-        manager = pokerboard_models.ManagerCredentials.objects.get(
-            user=self.context['manager_id'])
+        manager = pokerboard_models.ManagerCredentials.objects.get(user=self.context['manager_id'])
         jira = Jira(
             url=manager.url,
             username=manager.username,
@@ -163,6 +162,8 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                     ticket_response['status_code'] = status.HTTP_200_OK
                 ticket_response['key'] = key
                 ticket_responses.append(ticket_response)
+        except requests.exceptions.ConnectionError:
+            raise serializers.ValidationError("Connection Error from Jira")
         except Exception as e:
             if str(e).startswith("400 Client Error"):
                 raise serializers.ValidationError("Invalid Query")
@@ -289,3 +290,27 @@ class PokerboardMemberSerializer(serializers.ModelSerializer):
 
     def get_role(self, obj):
         return obj.get_role_display()
+
+
+class TicketOrderSerializer(serializers.ListSerializer):
+    """
+    Ticket order serializer for ordering tickets.
+    """
+    child = TicketSerializer()
+
+    def create(self, validated_data):
+        """
+        Order tickets according to ticket_id's.
+        """
+        pokerboard = self.context.get('pk')
+        validated_data.sort(key=lambda x: x["ticket_id"])
+        ticket_list = [element["ticket_id"] for element in validated_data]
+        tickets = pokerboard_models.Ticket.objects.filter(
+            ticket_id__in=ticket_list, pokerboard=pokerboard
+        ).order_by('ticket_id')
+
+        for ticket, updated_ticket in zip(tickets, validated_data):
+            ticket.order = updated_ticket.get('order')
+        
+        pokerboard_models.Ticket.objects.bulk_update(tickets, ['order'])
+        return validated_data
