@@ -203,3 +203,11 @@ class TicketDetailView(generics.RetrieveAPIView):
             if str(e).startswith("400 Client Error"):
                 raise serializers.ValidationError("Invalid Jira Query")
             raise serializers.ValidationError(str(e))
+
+
+class UserTicketEstimateRetrieveView(mixins.ListModelMixin, viewsets.GenericViewSet):
+    
+    serializer_class = pokerboard_serializers.UserEstimateSerializer
+
+    def get_queryset(self):
+        return pokerboard_models.UserTicketEstimate.objects.filter(user=self.request.user)

@@ -271,7 +271,6 @@ class VoteSerializer(serializers.ModelSerializer):
                 'estimate': validated_data['estimate']
             }
         )
-        print(":::Created :::", created)
         return vote
 
 
@@ -289,3 +288,19 @@ class PokerboardMemberSerializer(serializers.ModelSerializer):
 
     def get_role(self, obj):
         return obj.get_role_display()
+
+
+class UserEstimateSerializer(serializers.ModelSerializer):
+    
+    ticket = serializers.SerializerMethodField()
+
+    class Meta:
+        model = pokerboard_models.UserTicketEstimate
+        fields = [
+            'user', 'estimate', 'estimation_time', 'created_at', 
+            'updated_at', "deleted_at", 'ticket'
+        ]
+    
+    def get_ticket(self, obj):
+        serializer = TicketSerializer(instance=obj.ticket_id)
+        return serializer.data

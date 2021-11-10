@@ -1,3 +1,4 @@
+from posixpath import basename
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
@@ -9,6 +10,7 @@ router = DefaultRouter()
 router.register('members', pokerboard_views.PokerboardMembersView)
 router.register('ticket',pokerboard_views.TicketViewSet)
 router.register('vote', pokerboard_views.VoteViewSet)
+router.register('userestimate', pokerboard_views.UserTicketEstimateRetrieveView, basename='estimate')
 router.register('', pokerboard_views.PokerBoardViewSet, basename='pokerboard')
 
 urlpatterns = [
