@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
-import re
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Max
 from rest_framework import serializers
 from channels.generic.websocket import AsyncWebsocketConsumer
 
@@ -86,8 +86,8 @@ class SessionConsumer(AsyncWebsocketConsumer):
             instance=votes, many=True)
         clients = list(
             set(getattr(self.channel_layer, self.session_group_name, [])))
-        serializer = user_serializers.UserSerializer(
-            instance=clients, many=True)
+        query_set = poker_models.PokerboardUser.objects.filter(user__in=clients, pokerboard=self.pokerboard_id)
+        serializer = poker_serializers.PokerBoardVotingUserSerializer(instance=query_set, many=True)
         self.session = poker_models.Ticket.objects.filter(
             id=self.ticket_id).first()
         return {
@@ -155,7 +155,8 @@ class SessionConsumer(AsyncWebsocketConsumer):
             if self.scope["user"] == manager:
                 self.session.status = poker_models.Ticket.ESTIMATED
                 self.session.estimate = event["message"]["estimate"]
-
+                now = datetime.now()
+                self.session.end_datetime = now
                 jira_manager = poker_models.ManagerCredentials.objects.get(
                     user=manager)
                 jira = Jira(
@@ -221,6 +222,7 @@ class SessionConsumer(AsyncWebsocketConsumer):
         if self.scope["user"].id == manager and self.session.status != poker_models.Ticket.ESTIMATED:
             self.session.status = poker_models.Ticket.SKIPPED
             self.session.save()
+            self.move_ticket_to_end()
             return {
                 "type": event["type"],
             }
@@ -230,3 +232,11 @@ class SessionConsumer(AsyncWebsocketConsumer):
                     "error": "Can't skip"
                 }
             ))
+
+    def move_ticket_to_end(self):
+        max_order = poker_models.Ticket.objects.filter(pokerboard=self.pokerboard_id).aggregate(Max('order'))
+        if max_order:
+            val = max_order['order__max']
+            val = val + 1
+            self.session.order = val
+            self.session.save()

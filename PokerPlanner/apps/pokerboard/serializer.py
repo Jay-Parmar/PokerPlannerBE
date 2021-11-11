@@ -30,7 +30,7 @@ class PokerBoardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = pokerboard_models.Pokerboard
-        fields = ['id', 'manager', 'title', 'description', 'estimate_type', 'ticket', 'timer']
+        fields = ['id', 'manager', 'title', 'description', 'estimate_type', 'ticket', 'timer', 'estimation_cards']
 
 
 class ManagerCredentialSerializer(serializers.ModelSerializer):
@@ -198,6 +198,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
                 ticket_id=ticket_id, defaults={**ticket_data}
             )
             ticket_response['key'] = ticket_id
+        pokerboard_models.PokerboardUser.objects.create(user=manager, pokerboard=pokerboard, role=2)
         return pokerboard
 
 
@@ -212,6 +213,14 @@ class PokerBoardUserGroupSerialzier(serializers.ModelSerializer):
 
 
 class PokerboardUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = pokerboard_models.PokerboardUser
+        fields = ['id', 'user', 'role', 'pokerboard']
+
+
+class PokerBoardVotingUserSerializer(serializers.ModelSerializer):
+    user = user_serializers.UserSerializer()
+
     class Meta:
         model = pokerboard_models.PokerboardUser
         fields = ['id', 'user', 'role', 'pokerboard']
