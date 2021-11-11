@@ -19,10 +19,14 @@ class GetTicketsSerializer(serializers.ListSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    pokerboard = serializers.SerializerMethodField()
+
     class Meta:
         model = pokerboard_models.Ticket
         fields = ['id', 'pokerboard', 'ticket_id', 'order', 'status']
 
+    def get_pokerboard(self, obj):
+        return obj.pokerboard.title
 
 class PokerBoardSerializer(serializers.ModelSerializer):
     manager = user_serializers.UserSerializer()
@@ -108,7 +112,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         model = pokerboard_models.Pokerboard
         fields = [
             'manager_id', 'title', 'description', 'tickets', 'sprint_id',
-            'ticket_responses', 'jql', 'timer'
+            'ticket_responses', 'jql', 'timer', 'estimation_cards'
         ]
 
     def get_ticket_responses(self, instance):
