@@ -20,8 +20,8 @@ def send_email_task(first_name, pk, token, email):
     try:
         send_mail(subject=subject, message=message, from_email=settings.EMAIL_HOST_USER, 
         recipient_list=[email], fail_silently=False)
-    except:
-        print("Error Occured")
+    except Exception as e:
+        print("Error Occured", e)
 
 
 @app.task

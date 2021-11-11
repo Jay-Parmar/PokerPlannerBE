@@ -20,10 +20,14 @@ class GetTicketsSerializer(serializers.ListSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    pokerboard = serializers.SerializerMethodField()
+
     class Meta:
         model = pokerboard_models.Ticket
         fields = ['id', 'pokerboard', 'ticket_id', 'order', 'status']
 
+    def get_pokerboard(self, obj):
+        return obj.pokerboard.title
 
 class PokerBoardSerializer(serializers.ModelSerializer):
     manager = user_serializers.UserSerializer()
@@ -109,7 +113,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         model = pokerboard_models.Pokerboard
         fields = [
             'manager_id', 'title', 'description', 'tickets', 'sprint_id',
-            'ticket_responses', 'jql', 'timer'
+            'ticket_responses', 'jql', 'timer', 'estimation_cards', 'estimate_type'
         ]
 
     def get_ticket_responses(self, instance):
@@ -166,6 +170,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Connection Error from Jira")
         except Exception as e:
             if str(e).startswith("400 Client Error"):
+                print("exc", e)
                 raise serializers.ValidationError("Invalid Query")
             raise serializers.ValidationError(str(e))
         return ticket_responses
@@ -180,7 +185,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
             valid_tickets += ticket_response['status_code'] == 200
 
         if valid_tickets == 0:
-            raise serializers.ValidationError('Invalid tickets!')
+            raise serializers.ValidationError('Ticket(s) part of another pokerboard!')
         manager = user_models.User.objects.get(id=self.context['manager_id'])
         new_pokerboard["manager"] = manager
         pokerboard = pokerboard_models.Pokerboard.objects.create(
@@ -281,7 +286,6 @@ class VoteSerializer(serializers.ModelSerializer):
                 'estimate': validated_data['estimate']
             }
         )
-        print(":::Created :::", created)
         return vote
 
 
@@ -323,3 +327,19 @@ class TicketOrderSerializer(serializers.ListSerializer):
         
         pokerboard_models.Ticket.objects.bulk_update(tickets, ['order'])
         return validated_data
+
+
+class UserEstimateSerializer(serializers.ModelSerializer):
+    
+    ticket = serializers.SerializerMethodField()
+
+    class Meta:
+        model = pokerboard_models.UserTicketEstimate
+        fields = [
+            'user', 'estimate', 'estimation_time', 'created_at', 
+            'updated_at', "deleted_at", 'ticket'
+        ]
+    
+    def get_ticket(self, obj):
+        serializer = TicketSerializer(instance=obj.ticket_id)
+        return serializer.data

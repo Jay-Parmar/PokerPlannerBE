@@ -53,7 +53,7 @@ class ManagerCreateView(generics.CreateAPIView):
         try:
             serializer.save(user=self.request.user)
         except Exception as err:
-            return Response(data={'msg': 'User already present'}, status=status.HTTP_200_OK)
+            return Response(data={'msg': 'User already present'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ManagerUpdateCredentialsView(generics.UpdateAPIView):
@@ -233,3 +233,11 @@ class TicketOrderApiView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserTicketEstimateRetrieveView(mixins.ListModelMixin, viewsets.GenericViewSet):
+    
+    serializer_class = pokerboard_serializers.UserEstimateSerializer
+
+    def get_queryset(self):
+        return pokerboard_models.UserTicketEstimate.objects.filter(user=self.request.user)
