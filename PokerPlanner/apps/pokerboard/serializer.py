@@ -112,7 +112,7 @@ class PokerBoardCreationSerializer(serializers.ModelSerializer):
         model = pokerboard_models.Pokerboard
         fields = [
             'manager_id', 'title', 'description', 'tickets', 'sprint_id',
-            'ticket_responses', 'jql', 'timer', 'estimation_cards'
+            'ticket_responses', 'jql', 'timer', 'estimation_cards', 'estimate_type'
         ]
 
     def get_ticket_responses(self, instance):
