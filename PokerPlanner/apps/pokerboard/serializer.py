@@ -20,14 +20,14 @@ class GetTicketsSerializer(serializers.ListSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
-    pokerboard = serializers.SerializerMethodField()
-
+    poker_name = serializers.SerializerMethodField()
     class Meta:
         model = pokerboard_models.Ticket
-        fields = ['id', 'pokerboard', 'ticket_id', 'order', 'status']
+        fields = ['id', 'pokerboard', 'ticket_id', 'order', 'status', 'poker_name']
 
-    def get_pokerboard(self, obj):
+    def get_poker_name(self, obj):
         return obj.pokerboard.title
+        
 
 class PokerBoardSerializer(serializers.ModelSerializer):
     manager = user_serializers.UserSerializer()
@@ -318,6 +318,7 @@ class TicketOrderSerializer(serializers.ListSerializer):
         pokerboard = self.context.get('pk')
         validated_data.sort(key=lambda x: x["ticket_id"])
         ticket_list = [element["ticket_id"] for element in validated_data]
+
         tickets = pokerboard_models.Ticket.objects.filter(
             ticket_id__in=ticket_list, pokerboard=pokerboard
         ).order_by('ticket_id')
