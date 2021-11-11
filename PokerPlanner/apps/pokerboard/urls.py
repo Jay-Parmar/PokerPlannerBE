@@ -14,6 +14,7 @@ router.register('', pokerboard_views.PokerBoardViewSet, basename='pokerboard')
 urlpatterns = [
     path('managercredentials/update', pokerboard_views.ManagerUpdateCredentialsView.as_view()),
     path('managercredentials', pokerboard_views.ManagerListCredentialView.as_view()),
+    path('ordertickets', pokerboard_views.TicketOrderApiView.as_view()),
     path('',include(router.urls)),
     path('comment', pokerboard_views.CommentView.as_view(), name="comment"),
     path('manager', pokerboard_views.ManagerCreateView.as_view()),

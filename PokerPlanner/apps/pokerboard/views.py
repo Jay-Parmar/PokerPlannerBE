@@ -1,3 +1,6 @@
+import json
+import requests
+
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models.query_utils import Q
 from rest_framework import generics, mixins, viewsets, status, serializers
@@ -148,7 +151,10 @@ class CommentView(generics.CreateAPIView, generics.RetrieveAPIView):
             password = manager.password,
         )
         jira_ticket_id = pokerboard_models.Ticket.objects.get(id=serializer.validated_data['ticket_id']).ticket_id
-        jira.issue_add_comment(jira_ticket_id, serializer.validated_data['comment'])
+        try:
+            jira.issue_add_comment(jira_ticket_id, serializer.validated_data['comment'])
+        except requests.exceptions.ConnectionError:
+            raise serializers.ValidationError("Connection Error from Jira")
 
     def get(self, request, *args, **kwargs):
         ticket_id = request.query_params.get('ticket_id')
@@ -168,6 +174,8 @@ class CommentView(generics.CreateAPIView, generics.RetrieveAPIView):
             comments = response['issues'][0]['fields']['comment']['comments']
             comment_list = [comment["body"] for comment in comments]
             return Response({"comments": comment_list}, status=status.HTTP_200_OK)
+        except requests.exceptions.ConnectionError:
+            raise serializers.ValidationError("Connection Error from Jira")
         except Exception as e:
             if str(e).startswith("400 Client Error"):
                 raise serializers.ValidationError("Invalid Query")
@@ -199,7 +207,29 @@ class TicketDetailView(generics.RetrieveAPIView):
                 'estimate': issues['fields']['customfield_10016'],
             }
             return Response(data, status=status.HTTP_200_OK)
+        except requests.exceptions.ConnectionError:
+            raise serializers.ValidationError("Connection Error from Jira")
         except Exception as e:
             if str(e).startswith("400 Client Error"):
                 raise serializers.ValidationError("Invalid Jira Query")
             raise serializers.ValidationError(str(e))
+
+
+class TicketOrderApiView(generics.UpdateAPIView):
+    """
+    Ticket order API for ordering tickets.
+    """
+    serializer_class = pokerboard_serializers.TicketOrderSerializer
+    queryset = pokerboard_models.Ticket.objects.all()
+
+    def put(self, request, *args, **kwargs):
+        """
+        Changes ticket ordering.
+        """
+        pk = json.loads(request.query_params['0'])["pokerboard"]
+        ls = [json.loads(value) for value in request.query_params.dict().values()]
+        serializer = pokerboard_serializers.TicketOrderSerializer(data=ls, context={"pk": pk})
+        
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
